@@ -327,6 +327,13 @@ body {
   margin-bottom: 12px;
 }
 
+.panel .ratio-hint {
+  margin: -6px 0 12px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .size-row .field {
   margin-bottom: 0;
 }
@@ -429,6 +436,50 @@ body {
   list-style: none;
 }
 
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 6px;
+}
+
+/* Elementos soltos alinham com as linhas de grupo, que têm a seta (18px + 2px). */
+.layer-row[data-kind='element'][data-depth='0'] {
+  margin-left: 20px;
+}
+
+.layer-toggle {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.layer-toggle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.layer-toggle svg {
+  transition: transform 0.12s;
+}
+
+.layer-toggle[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+
+.layer-row.is-drop-target {
+  outline: 2px solid var(--accent-2);
+  outline-offset: -2px;
+}
+
 .layer {
   display: flex;
   align-items: center;
@@ -452,6 +503,21 @@ body {
 .layer svg {
   flex-shrink: 0;
   color: var(--text-muted);
+}
+
+.layer.is-renaming {
+  cursor: default;
+}
+
+.layer-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--accent-2);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  outline: none;
 }
 
 .layer:hover {
@@ -478,10 +544,52 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  z-index: 1;
   height: 2px;
   border-radius: 1px;
   background: var(--accent-2);
   pointer-events: none;
+}
+
+/* Remoção de fundo (painel da imagem) */
+.bg-removal {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.bg-removal > .field-label:first-child {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.checkbox-field input {
+  accent-color: var(--accent-2);
+}
+
+.button-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.button-pair .secondary-button {
+  margin: 0;
+  padding-inline: 6px;
+}
+
+.secondary-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 .statusbar {

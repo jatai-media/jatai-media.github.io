@@ -28,10 +28,6 @@ export const HANDLE_CURSORS: Record<Handle, string> = {
   w: 'ew-resize',
 };
 
-export function isCorner(handle: Handle): boolean {
-  return handle.length === 2;
-}
-
 /** Texto sozinho só escala pelos cantos (o tamanho vem da fonte). */
 export function handlesFor(elements: readonly DesignElement[]): readonly Handle[] {
   return elements.length === 1 && elements[0].type === 'text' ? CORNER_HANDLES : ALL_HANDLES;

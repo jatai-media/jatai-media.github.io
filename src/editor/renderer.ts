@@ -3,6 +3,8 @@ import { selectedElements, type Editor } from './editor';
 import { handlePoint, handlesFor, unionBounds, type Rect } from './geometry';
 
 const SELECTION_COLOR = '#ff9800';
+/** Guias de alinhamento: cor diferente da seleção para não se confundirem. */
+const GUIDE_COLOR = '#ff2d87';
 const HANDLE_SIZE = 8;
 
 function cssVar(name: string): string {
@@ -84,8 +86,11 @@ export class StageRenderer {
 
     ctx.strokeStyle = SELECTION_COLOR;
 
-    const hover = ui.hoverId && !selection.has(ui.hoverId) ? doc.getElement(ui.hoverId) : undefined;
-    if (hover) outline(toScreen(hover), 1.5);
+    if (ui.hoverIds.length && !ui.hoverIds.every((id) => selection.has(id))) {
+      const hovered = ui.hoverIds.map((id) => doc.getElement(id)).filter((el) => el !== undefined);
+      const bounds = unionBounds(hovered);
+      if (bounds) outline(toScreen(bounds), 1.5);
+    }
 
     const selected = selectedElements(this.editor);
     if (selected.length && !ui.editingId) {
@@ -105,6 +110,27 @@ export class StageRenderer {
         ctx.fillRect(p.x - half, p.y - half, HANDLE_SIZE, HANDLE_SIZE);
         ctx.strokeRect(p.x - half, p.y - half, HANDLE_SIZE, HANDLE_SIZE);
       }
+    }
+
+    if (ui.guides.length) {
+      ctx.save();
+      ctx.strokeStyle = GUIDE_COLOR;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const guide of ui.guides) {
+        // Meio pixel para a linha de 1 px ficar nítida.
+        if (guide.axis === 'x') {
+          const x = Math.round(viewport.toScreen(guide.position, 0).x) + 0.5;
+          ctx.moveTo(x, viewport.toScreen(0, guide.start).y);
+          ctx.lineTo(x, viewport.toScreen(0, guide.end).y);
+        } else {
+          const y = Math.round(viewport.toScreen(0, guide.position).y) + 0.5;
+          ctx.moveTo(viewport.toScreen(guide.start, 0).x, y);
+          ctx.lineTo(viewport.toScreen(guide.end, 0).x, y);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
     }
 
     if (ui.marquee) {

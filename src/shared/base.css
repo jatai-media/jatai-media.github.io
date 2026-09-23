@@ -123,3 +123,64 @@ input {
   background: var(--accent);
   color: var(--accent-text);
 }
+
+/* Menu de contexto (src/shared/context-menu.ts) */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px #0003;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu-item:hover,
+.context-menu-item:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+
+.context-menu-item kbd {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.context-menu-item.danger {
+  color: #e5484d;
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+/* Cadeado de proporção: mostra o ícone conforme o estado. */
+.lock-toggle[aria-pressed='true'] .icon-unlocked,
+.lock-toggle:not([aria-pressed='true']) .icon-locked {
+  display: none;
+}
+
+/* Mantém o destaque de "ligado" ao passar o mouse. */
+.icon-button[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--accent-2);
+  color: var(--accent-text);
+}

@@ -9,6 +9,7 @@ import { mountCanvasPanel } from './canvas-panel';
 import { bindClipboard } from './clipboard';
 import { DesignDocument } from './document';
 import type { Editor, UiState } from './editor';
+import { enteredGroup, groupSelection, selectedGroup, ungroupSelection } from './groups';
 import { exportPng } from './export';
 import { UndoHistory } from './history';
 import { bindImageDrop, insertImageFiles } from './image-import';
@@ -42,7 +43,7 @@ const viewport = new Viewport();
 const selection = new SelectionModel();
 const history = new UndoHistory(doc);
 const prefs: EditorPrefs = { lockAspect: false };
-const ui: UiState = { hoverId: null, marquee: null, editingId: null };
+const ui: UiState = { hoverIds: [], marquee: null, editingId: null, guides: [] };
 let tool: ToolId = 'select';
 
 const editor: Editor = {
@@ -60,6 +61,7 @@ const editor: Editor = {
   requestRender: () => renderer.request(),
   commit: () => history.commit(),
   editText: (id) => textEditor.open(id),
+  renameGroup: (groupId) => layers.rename(groupId),
   fitView,
 };
 
@@ -141,6 +143,7 @@ function bindShortcuts(): void {
         y: () => history.redo(),
         d: () => duplicateSelection(editor),
         a: () => selectAll(editor),
+        g: () => (event.shiftKey ? ungroupSelection(editor) : groupSelection(editor)),
       };
       const byCode: Record<string, () => void> = {
         BracketRight: () => arrangeSelection(editor, event.shiftKey ? 'front' : 'forward'),
@@ -163,11 +166,21 @@ function bindShortcuts(): void {
     if (event.key === '-') return zoomAtCenter(-1);
 
     // Seleção
+    if (event.key === 'F2') {
+      const group = selectedGroup(editor);
+      if (group) {
+        event.preventDefault();
+        return editor.renameGroup(group);
+      }
+    }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       return deleteSelection(editor);
     }
     if (event.key === 'Escape') {
+      // Dentro de um grupo, Esc volta a selecionar o grupo inteiro.
+      const group = enteredGroup(editor);
+      if (group) return selection.set(doc.groupMembers(group).map((el) => el.id));
       selection.clear();
       return selectTool('select');
     }
@@ -205,7 +218,7 @@ applyTranslations();
 const updateArtboardHandles = mountArtboardHandles(editor);
 mountCanvasPanel(editor);
 mountPropertiesPanel(editor);
-mountLayersPanel(editor);
+const layers = mountLayersPanel(editor);
 bindStageControls(stage, viewport);
 bindInteractions(editor, canvas);
 bindClipboard(editor);

@@ -6,16 +6,12 @@ import {
   createRectangle,
   createText,
   boxFromPoints,
-  type DesignElement,
-  type ElementPatch,
 } from './elements';
 import {
   elementAt,
   HANDLE_CURSORS,
   handlePoint,
   handlesFor,
-  isCorner,
-  mapRect,
   normalizeRect,
   rectsIntersect,
   resizeBounds,
@@ -23,9 +19,12 @@ import {
   unionBounds,
   type Handle,
   type Point,
-  type Rect,
 } from './geometry';
+import { openSelectionMenu } from './context-menus';
+import { clickTarget, expandToGroups, selectedGroup } from './groups';
 import { HANDLE_HIT_RADIUS } from './renderer';
+import { collectTargets, resizeGuides, SNAP_THRESHOLD, snapMove, snapResizeEdges } from './snapping';
+import { scaleElements } from './transform';
 
 interface PointerPos {
   /** px CSS dentro do stage */
@@ -82,11 +81,17 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
 
     const hit = elementAt(doc.elements, pos.doc, tolerance());
     if (hit) {
+      // Membro de grupo seleciona o grupo todo (a menos que já estejamos dentro dele).
+      const target = clickTarget(editor, hit);
+      const allSelected = target.every((id) => selection.has(id));
       if (event.shiftKey) {
-        selection.toggle(hit.id);
-        if (!selection.has(hit.id)) return null;
-      } else if (!selection.has(hit.id)) {
-        selection.set([hit.id]);
+        if (allSelected) {
+          selection.set(selection.ids.filter((id) => !target.includes(id)));
+          return null;
+        }
+        selection.set([...selection.ids, ...target]);
+      } else if (!allSelected) {
+        selection.set(target);
       }
       return startMove(pos);
     }
@@ -95,8 +100,21 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     return startMarquee(pos, event.shiftKey);
   }
 
+  /** Ctrl/⌘ durante o arraste desliga o encaixe (movimento livre). */
+  const snapDisabled = (event: PointerEvent) => event.ctrlKey || event.metaKey;
+  const snapThreshold = () => SNAP_THRESHOLD / viewport.zoom;
+
+  function endWithGuides(): void {
+    ui.guides = [];
+    editor.requestRender();
+    editor.commit();
+  }
+
   function startMove(start: PointerPos): Gesture {
-    const origins = selectedElements(editor).map((el) => ({ id: el.id, x: el.x, y: el.y }));
+    const moving = selectedElements(editor);
+    const origins = moving.map((el) => ({ id: el.id, x: el.x, y: el.y }));
+    const bounds = unionBounds(moving)!;
+    const targets = collectTargets(doc, new Set(selection.ids));
     let active = false;
     return {
       move(pos, event) {
@@ -104,14 +122,23 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
         let dy = pos.doc.y - start.doc.y;
         if (!active && Math.hypot(pos.screen.x - start.screen.x, pos.screen.y - start.screen.y) < CLICK_SLOP) return;
         active = true;
+
         // Shift trava no eixo dominante.
-        if (event.shiftKey) {
-          if (Math.abs(dx) > Math.abs(dy)) dy = 0;
-          else dx = 0;
+        const lock = event.shiftKey ? (Math.abs(dx) > Math.abs(dy) ? 'y' : 'x') : null;
+        if (lock === 'y') dy = 0;
+        if (lock === 'x') dx = 0;
+
+        ui.guides = [];
+        if (!snapDisabled(event)) {
+          const snap = snapMove({ ...bounds, x: bounds.x + dx, y: bounds.y + dy }, targets, snapThreshold());
+          if (lock !== 'x') dx += snap.dx;
+          if (lock !== 'y') dy += snap.dy;
+          ui.guides = snap.guides;
         }
         doc.updateElements(origins.map((o) => [o.id, { x: o.x + dx, y: o.y + dy }] as const));
+        editor.requestRender();
       },
-      end: () => editor.commit(),
+      end: endWithGuides,
     };
   }
 
@@ -119,25 +146,40 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     const originals = selectedElements(editor);
     const bounds = unionBounds(originals)!;
     const onlyText = originals.length === 1 && originals[0].type === 'text';
-    const allImages = originals.every((el) => el.type === 'image');
+    // Texto sempre escala proporcional. Grupo inteiro segue o cadeado do grupo;
+    // outras seleções, o dos elementos (basta um travado). Grupo de um membro
+    // só mostra os campos do elemento no painel, então segue o do elemento.
+    const group = originals.length > 1 ? selectedGroup(editor) : null;
+    const locked = onlyText || (group ? !!doc.groupMeta(group).lockRatio : originals.some((el) => el.lockRatio));
+    const targets = collectTargets(doc, new Set(selection.ids));
+    const edges = {
+      left: handle.includes('w'),
+      right: handle.includes('e'),
+      top: handle.includes('n'),
+      bottom: handle.includes('s'),
+    };
     return {
       move(pos, event) {
-        // Texto sempre proporcional; imagens pelos cantos também (Shift inverte).
-        const keepRatio = onlyText || event.shiftKey !== (allImages && isCorner(handle));
-        const next = resizeBounds(bounds, handle, pos.doc.x - start.doc.x, pos.doc.y - start.doc.y, keepRatio);
-        doc.updateElements(originals.map((el) => [el.id, scaledPatch(el, bounds, next)] as const));
-      },
-      end: () => editor.commit(),
-    };
-  }
+        // Shift inverte o cadeado durante o arraste (texto nunca distorce).
+        const keepRatio = onlyText || locked !== event.shiftKey;
+        const dx = pos.doc.x - start.doc.x;
+        const dy = pos.doc.y - start.doc.y;
+        let next = resizeBounds(bounds, handle, dx, dy, keepRatio);
 
-  function scaledPatch(el: DesignElement, from: Rect, to: Rect): ElementPatch {
-    const r = mapRect(el, from, to);
-    if (el.type === 'text') {
-      const scale = from.height ? to.height / from.height : 1;
-      return { x: r.x, y: r.y, fontSize: Math.max(1, el.fontSize * scale) };
-    }
-    return { x: r.x, y: r.y, width: Math.max(0, r.width), height: Math.max(0, r.height) };
+        ui.guides = [];
+        if (!snapDisabled(event)) {
+          const snap = snapResizeEdges(next, edges, targets, snapThreshold());
+          // Com proporção travada, só um eixo pode mandar (o outro acompanha).
+          const sdx = snap.dx;
+          const sdy = keepRatio && sdx ? 0 : snap.dy;
+          if (sdx || sdy) next = resizeBounds(bounds, handle, dx + sdx, dy + sdy, keepRatio);
+          ui.guides = resizeGuides(next, edges, targets);
+        }
+        scaleElements(doc, originals, bounds, next);
+        editor.requestRender();
+      },
+      end: endWithGuides,
+    };
   }
 
   function startMarquee(start: PointerPos, additive: boolean): Gesture {
@@ -146,7 +188,7 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
       move(pos) {
         ui.marquee = normalizeRect(start.doc, pos.doc);
         const hits = doc.elements.filter((el) => rectsIntersect(el, ui.marquee!)).map((el) => el.id);
-        selection.set([...base, ...hits]);
+        selection.set([...base, ...expandToGroups(editor, hits)]);
         editor.requestRender();
       },
       end() {
@@ -275,7 +317,7 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
         break;
     }
     if (gesture) canvas.setPointerCapture(event.pointerId);
-    ui.hoverId = null;
+    ui.hoverIds = [];
     editor.requestRender();
   });
 
@@ -291,9 +333,10 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     }
     const handle = handleAt(pos.screen);
     canvas.style.cursor = handle ? HANDLE_CURSORS[handle] : '';
-    const hoverId = handle ? null : (elementAt(doc.elements, pos.doc, tolerance())?.id ?? null);
-    if (hoverId !== ui.hoverId) {
-      ui.hoverId = hoverId;
+    const hovered = handle ? undefined : elementAt(doc.elements, pos.doc, tolerance());
+    const hoverIds = hovered ? clickTarget(editor, hovered) : [];
+    if (hoverIds.join() !== ui.hoverIds.join()) {
+      ui.hoverIds = hoverIds;
       editor.requestRender();
     }
   });
@@ -306,15 +349,33 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
   canvas.addEventListener('pointercancel', finish);
 
   canvas.addEventListener('pointerleave', () => {
-    if (ui.hoverId) {
-      ui.hoverId = null;
+    if (ui.hoverIds.length) {
+      ui.hoverIds = [];
       editor.requestRender();
     }
+  });
+
+  // Clique direito: seleciona o que está sob o ponteiro (grupo inteiro, se for o caso) e abre o menu.
+  canvas.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    if (editor.tool !== 'select') return;
+    const hit = elementAt(doc.elements, position(event).doc, tolerance());
+    if (!hit) {
+      selection.clear();
+      return;
+    }
+    const target = clickTarget(editor, hit);
+    if (!target.every((id) => selection.has(id))) selection.set(target);
+    openSelectionMenu(editor, event.clientX, event.clientY);
   });
 
   canvas.addEventListener('dblclick', (event) => {
     if (editor.tool !== 'select') return;
     const hit = elementAt(doc.elements, position(event).doc, tolerance());
-    if (hit?.type === 'text') editor.editText(hit.id);
+    if (!hit) return;
+    // Duplo clique "entra" no grupo: seleciona só o membro.
+    if (hit.groupId) selection.set([hit.id]);
+    if (hit.type === 'text') editor.editText(hit.id);
+    editor.requestRender();
   });
 }

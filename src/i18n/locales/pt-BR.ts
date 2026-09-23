@@ -71,6 +71,7 @@ const ptBR: Messages = {
       strokeWidth: 'Espessura',
       radius: 'Arredondamento',
       opacity: 'Opacidade',
+      ratio: 'Proporção',
       font: 'Fonte',
       fontSize: 'Tamanho',
       style: 'Estilo',
@@ -89,6 +90,9 @@ const ptBR: Messages = {
       back: 'Enviar para trás',
       duplicate: 'Duplicar',
       delete: 'Excluir',
+      grouping: 'Agrupamento',
+      group: 'Agrupar (Ctrl+G)',
+      ungroup: 'Desagrupar (Ctrl+Shift+G)',
     },
     selection: {
       count: '{count} elementos selecionados',
@@ -100,6 +104,25 @@ const ptBR: Messages = {
       path: 'Desenho',
       text: 'Texto',
       image: 'Imagem',
+      group: 'Grupo',
+    },
+    bg: {
+      title: 'Remover fundo',
+      tolerance: 'Tolerância',
+      interior: 'Remover também áreas internas',
+      apply: 'Remover fundo',
+      working: 'Processando…',
+      restore: 'Restaurar original',
+    },
+    menu: {
+      rename: 'Renomear',
+      group: 'Agrupar',
+      ungroup: 'Desagrupar',
+      duplicate: 'Duplicar',
+      delete: 'Excluir',
+    },
+    layers: {
+      toggle: 'Mostrar ou ocultar conteúdo',
     },
     panels: {
       properties: 'Propriedades',
@@ -111,7 +134,7 @@ const ptBR: Messages = {
       activeTool: 'Ferramenta: {tool}',
       zoom: 'Zoom: {value}%',
       size: '{width} × {height} px',
-      navHint: 'Espaço + arrastar para mover · Ctrl + rolagem para zoom',
+      navHint: 'Espaço + arrastar para mover · Ctrl + rolagem para zoom · Ctrl ao arrastar: sem alinhamento',
     },
   },
 };

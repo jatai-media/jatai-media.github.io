@@ -1,6 +1,6 @@
 import type { ArrangeAction } from './document';
 import { selectedElements, type Editor } from './editor';
-import { cloneElement, type DesignElement } from './elements';
+import { cloneElement, newId, withGroup, type DesignElement } from './elements';
 
 /** Deslocamento de cópias duplicadas/coladas, em px do documento. */
 export const COPY_OFFSET = 20;
@@ -12,11 +12,22 @@ export function deleteSelection(editor: Editor): void {
   editor.commit();
 }
 
-/** Adiciona cópias dos elementos e seleciona as cópias. */
+/**
+ * Adiciona cópias dos elementos e seleciona as cópias. Grupos copiados viram
+ * grupos novos (as cópias não entram no grupo original).
+ */
 export function insertCopies(editor: Editor, elements: readonly DesignElement[], offset: number): void {
   if (!elements.length) return;
-  const copies = elements.map((el) => cloneElement(el, offset, offset));
+  const newGroups = new Map<string, string>();
+  const copies = elements.map((el) => {
+    const copy = cloneElement(el, offset, offset);
+    if (!el.groupId) return copy;
+    if (!newGroups.has(el.groupId)) newGroups.set(el.groupId, newId());
+    return withGroup(copy, newGroups.get(el.groupId)!);
+  });
   editor.doc.addElements(copies);
+  // Cópias de grupos levam nome e cadeado junto.
+  for (const [original, copy] of newGroups) editor.doc.setGroupMeta(copy, editor.doc.groupMeta(original));
   editor.selection.set(copies.map((el) => el.id));
   editor.commit();
 }

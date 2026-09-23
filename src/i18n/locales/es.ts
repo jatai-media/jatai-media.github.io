@@ -71,6 +71,7 @@ const es: Messages = {
       strokeWidth: 'Grosor',
       radius: 'Redondeo',
       opacity: 'Opacidad',
+      ratio: 'Proporción',
       font: 'Fuente',
       fontSize: 'Tamaño',
       style: 'Estilo',
@@ -89,6 +90,9 @@ const es: Messages = {
       back: 'Enviar al fondo',
       duplicate: 'Duplicar',
       delete: 'Eliminar',
+      grouping: 'Agrupación',
+      group: 'Agrupar (Ctrl+G)',
+      ungroup: 'Desagrupar (Ctrl+Shift+G)',
     },
     selection: {
       count: '{count} elementos seleccionados',
@@ -100,6 +104,25 @@ const es: Messages = {
       path: 'Dibujo',
       text: 'Texto',
       image: 'Imagen',
+      group: 'Grupo',
+    },
+    bg: {
+      title: 'Quitar fondo',
+      tolerance: 'Tolerancia',
+      interior: 'Quitar también áreas internas',
+      apply: 'Quitar fondo',
+      working: 'Procesando…',
+      restore: 'Restaurar original',
+    },
+    menu: {
+      rename: 'Cambiar nombre',
+      group: 'Agrupar',
+      ungroup: 'Desagrupar',
+      duplicate: 'Duplicar',
+      delete: 'Eliminar',
+    },
+    layers: {
+      toggle: 'Mostrar u ocultar contenido',
     },
     panels: {
       properties: 'Propiedades',
@@ -111,7 +134,7 @@ const es: Messages = {
       activeTool: 'Herramienta: {tool}',
       zoom: 'Zoom: {value}%',
       size: '{width} × {height} px',
-      navHint: 'Espacio + arrastrar para desplazar · Ctrl + rueda para zoom',
+      navHint: 'Espacio + arrastrar para desplazar · Ctrl + rueda para zoom · Ctrl al arrastrar: sin alineación',
     },
   },
 };

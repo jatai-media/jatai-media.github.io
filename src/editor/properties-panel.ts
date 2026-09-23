@@ -2,8 +2,12 @@ import { onLocaleChange, t, type TranslationKey } from '../i18n';
 import { arrangeSelection, deleteSelection, duplicateSelection } from './actions';
 import { selectedElements, type Editor } from './editor';
 import { ELEMENT_LABELS } from './element-meta';
+import { groupDisplayName, groupSelection, groupsInSelection, selectedGroup, ungroupSelection } from './groups';
+import { unionBounds } from './geometry';
 import type { ElementPatch, ElementType, TextAlign } from './elements';
 import { FONTS, type FontId } from './text-layout';
+import { scaleElements } from './transform';
+import { DEFAULT_BG_REMOVAL, removeBackground } from './background-removal';
 
 /** Um controle do painel: o elemento DOM e como atualizá-lo a partir do documento. */
 interface Field {
@@ -27,7 +31,28 @@ const ICONS = {
   back: svg('<rect x="4" y="4" width="12" height="12" rx="2"/><path d="M20 8v10a2 2 0 0 1-2 2H8"/>'),
   duplicate: svg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'),
   delete: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+  group: svg('<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/><rect x="7" y="7" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>'),
+  ungroup: svg('<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M15 5h4v4M9 19H5v-4"/>'),
 };
+
+/** Cadeado aberto e fechado; o CSS mostra um ou outro conforme aria-pressed. */
+const LOCK_ICONS =
+  svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>').replace('<svg', '<svg class="icon-locked"') +
+  svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.9"/>').replace('<svg', '<svg class="icon-unlocked"');
+
+function gcd(a: number, b: number): number {
+  return b ? gcd(b, a % b) : a;
+}
+
+/** "16:9" quando a fração é simples; senão "1,78:1" (no formato do idioma). */
+function formatRatio(width: number, height: number): string {
+  const w = Math.round(width);
+  const h = Math.round(height);
+  if (!w || !h) return '—';
+  const d = gcd(w, h);
+  if (w / d <= 32 && h / d <= 32) return `${w / d}:${h / d}`;
+  return `${(w / h).toLocaleString(document.documentElement.lang, { maximumFractionDigits: 2 })}:1`;
+}
 
 const TEXT_ALIGNS: readonly { align: TextAlign; icon: string; titleKey: TranslationKey }[] = [
   { align: 'left', icon: ICONS.alignLeft, titleKey: 'editor.props.alignLeft' },
@@ -222,6 +247,153 @@ export function mountPropertiesPanel(editor: Editor): void {
     };
   }
 
+  /**
+   * Remoção de fundo da imagem. A primeira aplicação guarda o original; depois
+   * disso, mexer na tolerância ou nas áreas internas reprocessa ao vivo a
+   * partir do original (o passo de desfazer fecha ao soltar o controle).
+   */
+  function backgroundField(id: string): Field {
+    const image = () => {
+      const el = doc.getElement(id);
+      return el?.type === 'image' ? el : undefined;
+    };
+    const settings = { ...DEFAULT_BG_REMOVAL, ...image()?.bgRemoval };
+    /** Só o processamento mais recente vale (evita resultados fora de ordem). */
+    let run = 0;
+    let timer = 0;
+
+    const root = document.createElement('div');
+    root.className = 'field bg-removal';
+    const label = document.createElement('span');
+    label.className = 'field-label';
+    label.textContent = t('editor.bg.title');
+
+    const toleranceHead = document.createElement('span');
+    toleranceHead.className = 'field-label';
+    const toleranceValue = document.createElement('span');
+    toleranceValue.className = 'field-value';
+    toleranceHead.append(t('editor.bg.tolerance'), toleranceValue);
+    const tolerance = document.createElement('input');
+    tolerance.type = 'range';
+    tolerance.min = '0';
+    tolerance.max = '100';
+    tolerance.setAttribute('aria-label', t('editor.bg.tolerance'));
+
+    const interiorLabel = document.createElement('label');
+    interiorLabel.className = 'checkbox-field';
+    const interior = document.createElement('input');
+    interior.type = 'checkbox';
+    interiorLabel.append(interior, t('editor.bg.interior'));
+
+    const buttons = document.createElement('div');
+    buttons.className = 'button-pair';
+    const apply = document.createElement('button');
+    apply.type = 'button';
+    apply.className = 'secondary-button';
+    const restore = document.createElement('button');
+    restore.type = 'button';
+    restore.className = 'secondary-button';
+    restore.textContent = t('editor.bg.restore');
+    buttons.append(apply, restore);
+
+    root.append(label, toleranceHead, tolerance, interiorLabel, buttons);
+
+    const setBusy = (busy: boolean) => {
+      apply.disabled = busy;
+      apply.textContent = busy ? t('editor.bg.working') : t('editor.bg.apply');
+    };
+
+    async function process(commit: boolean): Promise<void> {
+      const current = image();
+      if (!current) return;
+      const original = current.originalSrc ?? current.src;
+      const mine = ++run;
+      setBusy(true);
+      try {
+        const src = await removeBackground(original, settings);
+        if (mine !== run || !image()) return;
+        doc.updateElement(id, { src, originalSrc: original, bgRemoval: { ...settings } });
+        if (commit) editor.commit();
+      } catch (error) {
+        console.warn(error);
+      } finally {
+        if (mine === run) setBusy(false);
+      }
+    }
+
+    /** Já removido? Então ajustes reprocessam na hora. */
+    const applied = () => image()?.originalSrc !== undefined;
+
+    tolerance.addEventListener('input', () => {
+      settings.tolerance = Number(tolerance.value);
+      toleranceValue.textContent = tolerance.value;
+      if (!applied()) return;
+      clearTimeout(timer);
+      timer = window.setTimeout(() => void process(false), 120);
+    });
+    tolerance.addEventListener('change', () => {
+      clearTimeout(timer);
+      if (applied()) void process(true);
+    });
+    interior.addEventListener('change', () => {
+      settings.interior = interior.checked;
+      if (applied()) void process(true);
+    });
+    apply.addEventListener('click', () => void process(true));
+    restore.addEventListener('click', () => {
+      const current = image();
+      if (!current?.originalSrc) return;
+      run += 1;
+      doc.updateElement(id, { src: current.originalSrc, originalSrc: undefined, bgRemoval: undefined });
+      editor.commit();
+    });
+
+    setBusy(false);
+    return {
+      root,
+      sync() {
+        const saved = image()?.bgRemoval;
+        if (saved) Object.assign(settings, saved);
+        tolerance.value = String(settings.tolerance);
+        toleranceValue.textContent = tolerance.value;
+        interior.checked = settings.interior;
+        restore.hidden = !applied();
+      },
+    };
+  }
+
+  /** Botão de cadeado da proporção (fechado = travada). */
+  function lockField(get: () => boolean, toggle: () => void): Field {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'icon-button lock-toggle';
+    button.innerHTML = LOCK_ICONS;
+    button.title = t('editor.canvas.lockRatio');
+    button.setAttribute('aria-label', button.title);
+    button.addEventListener('click', toggle);
+    return { root: button, sync: () => button.setAttribute('aria-pressed', String(get())) };
+  }
+
+  /** Largura · cadeado · altura, alinhados como no painel "Tela". */
+  function sizeRow(width: Field, lock: Field, height: Field): Field {
+    const root = document.createElement('div');
+    root.className = 'size-row';
+    root.append(width.root, lock.root, height.root);
+    return { root, sync: () => [width, lock, height].forEach((field) => field.sync()) };
+  }
+
+  /** Proporção atual (ex.: "16:9"), só leitura. */
+  function ratioField(width: () => number | undefined, height: () => number | undefined): Field {
+    const root = document.createElement('p');
+    root.className = 'ratio-hint';
+    return {
+      root,
+      sync() {
+        root.textContent = `${t('editor.props.ratio')}: ${formatRatio(width() ?? 0, height() ?? 0)}`;
+      },
+    };
+  }
+
   function row(...children: Field[]): Field {
     const root = document.createElement('div');
     root.className = 'field-row';
@@ -261,11 +433,27 @@ export function mountPropertiesPanel(editor: Editor): void {
     ];
 
     if (type !== 'text') {
+      // Com o cadeado fechado, mudar um lado ajusta o outro na mesma proporção.
+      const locked = () => !!get('lockRatio')();
+      const ratio = () => {
+        const el = current();
+        return el?.width && el.height ? el.width / el.height : null;
+      };
+      const setSide = (side: 'width' | 'height') => (value: number) => {
+        const r = ratio();
+        if (!locked() || !r) return set(side)(value);
+        doc.updateElement(id, side === 'width' ? { width: value, height: value / r } : { width: value * r, height: value });
+      };
       list.push(
-        row(
-          numberField(t('editor.canvas.width'), get('width'), set('width'), { min: 0, unit: 'px' }),
-          numberField(t('editor.canvas.height'), get('height'), set('height'), { min: 0, unit: 'px' }),
+        sizeRow(
+          numberField(t('editor.canvas.width'), get('width'), setSide('width'), { min: 0, unit: 'px' }),
+          lockField(locked, () => {
+            set('lockRatio')(!locked());
+            editor.commit();
+          }),
+          numberField(t('editor.canvas.height'), get('height'), setSide('height'), { min: 0, unit: 'px' }),
         ),
+        ratioField(() => current()?.width, () => current()?.height),
       );
     }
 
@@ -319,19 +507,94 @@ export function mountPropertiesPanel(editor: Editor): void {
       );
     }
 
+    if (type === 'image') list.push(backgroundField(id));
+
     list.push(rangeField(t('editor.props.opacity'), get('opacity'), set('opacity')), ...arrangeFields());
     return list;
   }
 
+  /** X/Y da seleção inteira; mudar move todos juntos. */
+  function selectionPositionFields(): Field {
+    const bounds = () => unionBounds(selectedElements(editor)) ?? undefined;
+    const moveTo = (axis: 'x' | 'y') => (value: number) => {
+      const current = bounds();
+      if (!current) return;
+      const delta = value - current[axis];
+      doc.updateElements(selectedElements(editor).map((el) => [el.id, { [axis]: el[axis] + delta }] as const));
+    };
+    return row(
+      numberField('X', () => bounds()?.x, moveTo('x'), { unit: 'px' }),
+      numberField('Y', () => bounds()?.y, moveTo('y'), { unit: 'px' }),
+    );
+  }
+
+  function groupingField(): Field {
+    const hasGroups = groupsInSelection(editor).length > 0;
+    const whole = selectedGroup(editor) !== null;
+    return buttonsField(t('editor.arrange.grouping'), [
+      ...(whole
+        ? []
+        : [{ icon: ICONS.group, titleKey: 'editor.arrange.group' as const, onClick: () => groupSelection(editor) }]),
+      ...(hasGroups
+        ? [{ icon: ICONS.ungroup, titleKey: 'editor.arrange.ungroup' as const, onClick: () => ungroupSelection(editor) }]
+        : []),
+    ]);
+  }
+
+  /**
+   * Largura/altura do grupo inteiro, com o cadeado do próprio grupo.
+   * Mudar um lado escala todos os membros a partir do canto superior esquerdo.
+   */
+  function groupSizeFields(groupId: string): Field[] {
+    const bounds = () => unionBounds(selectedElements(editor)) ?? undefined;
+    const locked = () => !!doc.groupMeta(groupId).lockRatio;
+    const setSide = (side: 'width' | 'height') => (value: number) => {
+      const from = bounds();
+      if (!from) return;
+      const ratio = from.width && from.height ? from.width / from.height : null;
+      let width = side === 'width' ? value : from.width;
+      let height = side === 'height' ? value : from.height;
+      if (locked() && ratio) {
+        if (side === 'width') height = value / ratio;
+        else width = value * ratio;
+      }
+      scaleElements(doc, selectedElements(editor), from, { x: from.x, y: from.y, width, height });
+    };
+    return [
+      sizeRow(
+        numberField(t('editor.canvas.width'), () => bounds()?.width, setSide('width'), { min: 1, unit: 'px' }),
+        lockField(locked, () => {
+          doc.setGroupMeta(groupId, { lockRatio: !locked() });
+          editor.commit();
+        }),
+        numberField(t('editor.canvas.height'), () => bounds()?.height, setSide('height'), { min: 1, unit: 'px' }),
+      ),
+      ratioField(
+        () => bounds()?.width,
+        () => bounds()?.height,
+      ),
+    ];
+  }
+
   function multiFields(count: number): Field[] {
-    return [heading(t('editor.selection.count', { count })), ...arrangeFields()];
+    const group = selectedGroup(editor);
+    const title = group ? groupDisplayName(doc, group) : t('editor.selection.count', { count });
+    return [
+      heading(title),
+      selectionPositionFields(),
+      ...(group ? groupSizeFields(group) : []),
+      groupingField(),
+      ...arrangeFields(),
+    ];
   }
 
   // ---- Montagem -------------------------------------------------------------
 
   function render(force = false): void {
     const selected = selectedElements(editor);
-    const key = selected.map((el) => `${el.id}:${el.type}`).join(',');
+    // Inclui o nome do grupo para o título atualizar ao renomear.
+    const group = selectedGroup(editor);
+    const key = selected.map((el) => `${el.id}:${el.type}:${el.groupId ?? ''}`).join(',') + (group ? groupDisplayName(doc, group) : '');
     if (force || key !== builtFor) {
       builtFor = key;
       canvasPanel.hidden = selected.length > 0;

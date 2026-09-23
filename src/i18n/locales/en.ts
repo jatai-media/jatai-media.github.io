@@ -75,6 +75,7 @@ const en = {
       strokeWidth: 'Stroke width',
       radius: 'Corner radius',
       opacity: 'Opacity',
+      ratio: 'Aspect ratio',
       font: 'Font',
       fontSize: 'Font size',
       style: 'Style',
@@ -93,6 +94,9 @@ const en = {
       back: 'Send to back',
       duplicate: 'Duplicate',
       delete: 'Delete',
+      grouping: 'Grouping',
+      group: 'Group (Ctrl+G)',
+      ungroup: 'Ungroup (Ctrl+Shift+G)',
     },
     selection: {
       count: '{count} elements selected',
@@ -104,6 +108,25 @@ const en = {
       path: 'Drawing',
       text: 'Text',
       image: 'Image',
+      group: 'Group',
+    },
+    bg: {
+      title: 'Remove background',
+      tolerance: 'Tolerance',
+      interior: 'Also remove enclosed areas',
+      apply: 'Remove background',
+      working: 'Processing…',
+      restore: 'Restore original',
+    },
+    menu: {
+      rename: 'Rename',
+      group: 'Group',
+      ungroup: 'Ungroup',
+      duplicate: 'Duplicate',
+      delete: 'Delete',
+    },
+    layers: {
+      toggle: 'Show or hide contents',
     },
     panels: {
       properties: 'Properties',
@@ -115,7 +138,7 @@ const en = {
       activeTool: 'Tool: {tool}',
       zoom: 'Zoom: {value}%',
       size: '{width} × {height} px',
-      navHint: 'Space + drag to pan · Ctrl + scroll to zoom',
+      navHint: 'Space + drag to pan · Ctrl + scroll to zoom · Hold Ctrl while dragging to move freely',
     },
   },
 };

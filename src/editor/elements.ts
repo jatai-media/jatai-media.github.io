@@ -17,6 +17,10 @@ interface BaseElement {
   height: number;
   /** 0–1 */
   opacity: number;
+  /** Grupo ao qual pertence. Membros de um grupo ficam sempre juntos na ordem das camadas. */
+  groupId?: string;
+  /** Mantém a proporção largura/altura ao redimensionar. */
+  lockRatio?: boolean;
 }
 
 export interface RectangleElement extends BaseElement {
@@ -65,8 +69,12 @@ export interface TextElement extends BaseElement {
 
 export interface ImageElement extends BaseElement {
   type: 'image';
-  /** Data URL da imagem. */
+  /** Data URL da imagem (a exibida; pode estar sem fundo). */
   src: string;
+  /** Imagem original, guardada enquanto o fundo estiver removido (permite reajustar e restaurar). */
+  originalSrc?: string;
+  /** Ajustes usados na remoção de fundo atual. */
+  bgRemoval?: { tolerance: number; interior: boolean };
 }
 
 export type DesignElement =
@@ -168,9 +176,18 @@ export function createText(x: number, y: number, fontSize: number): TextElement 
 }
 
 export function createImage(src: string, x: number, y: number, width: number, height: number): ImageElement {
-  return { id: newId(), type: 'image', x, y, width, height, opacity: 1, src };
+  // Fotos quase nunca devem distorcer: nascem com a proporção travada.
+  return { id: newId(), type: 'image', x, y, width, height, opacity: 1, src, lockRatio: true };
 }
 
 export function cloneElement(el: DesignElement, dx: number, dy: number): DesignElement {
   return { ...el, id: newId(), x: el.x + dx, y: el.y + dy };
+}
+
+/** Cópia do elemento com outro grupo (null = fora de qualquer grupo). */
+export function withGroup(el: DesignElement, groupId: string | null): DesignElement {
+  const copy = { ...el };
+  if (groupId) copy.groupId = groupId;
+  else delete copy.groupId;
+  return copy;
 }

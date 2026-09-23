@@ -4,16 +4,20 @@ import type { Rect } from './geometry';
 import type { UndoHistory } from './history';
 import type { EditorPrefs } from './prefs';
 import type { SelectionModel } from './selection';
+import type { Guide } from './snapping';
 import type { ToolId } from './tools';
 import type { Viewport } from './viewport';
 
 /** Estado passageiro da interface, desenhado por cima do design. */
 export interface UiState {
-  hoverId: string | null;
+  /** Elementos sob o ponteiro (o grupo inteiro, se for o caso). */
+  hoverIds: string[];
   /** Retângulo da seleção por área (documento). */
   marquee: Rect | null;
   /** Texto sendo editado (não é desenhado no canvas enquanto isso). */
   editingId: string | null;
+  /** Guias de alinhamento visíveis durante um arraste. */
+  guides: Guide[];
 }
 
 /** Tudo o que os módulos do editor compartilham. Montado em main.ts. */
@@ -31,6 +35,8 @@ export interface Editor {
   /** Fecha um passo de desfazer (chame ao terminar cada operação). */
   commit(): void;
   editText(id: string): void;
+  /** Abre a edição do nome do grupo na lista de camadas. */
+  renameGroup(groupId: string): void;
   fitView(): void;
 }
 

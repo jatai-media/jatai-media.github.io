@@ -18,6 +18,21 @@ export function getImage(src: string): HTMLImageElement | null {
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
+/** Carrega a imagem no cache antes de usá-la (evita piscar ao trocar o src de um elemento). */
+export function preloadImage(src: string): Promise<void> {
+  const cached = cache.get(src);
+  if (cached?.complete && cached.naturalWidth > 0) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.addEventListener('load', () => {
+      cache.set(src, img);
+      resolve();
+    });
+    img.addEventListener('error', () => reject(new Error('Falha ao carregar a imagem')));
+    img.src = src;
+  });
+}
+
 /** Lê um arquivo de imagem como data URL e descobre o tamanho original. */
 export function readImageFile(file: File): Promise<{ src: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {

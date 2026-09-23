@@ -1,7 +1,26 @@
 import type { Viewport } from './viewport';
 
+/** Inputs que não recebem texto: não devem bloquear atalhos de teclado. */
+const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'range', 'color', 'button', 'submit', 'reset', 'file']);
+
+/** O foco está num campo onde as teclas são digitação (e não atalhos)? */
 export function isTyping(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && !!target.closest('input, textarea, select, [contenteditable="true"]');
+  if (!(target instanceof HTMLElement)) return false;
+  if (target instanceof HTMLInputElement) return !NON_TEXT_INPUTS.has(target.type);
+  return !!target.closest('textarea, select, [contenteditable="true"]');
+}
+
+/** Zoom por px de rolagem (exponencial, para ser igual em qualquer nível de zoom). */
+const ZOOM_SENSITIVITY = 0.0015;
+/** Maior rolagem (px) considerada num único evento de zoom. */
+const MAX_ZOOM_DELTA = 120;
+const LINE_HEIGHT = 16;
+
+/** Converte o delta da roda para px (alguns navegadores informam em linhas ou páginas). */
+function wheelPixels(event: WheelEvent, delta: number, pageSize: number): number {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return delta * LINE_HEIGHT;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return delta * pageSize;
+  return delta;
 }
 
 /**
@@ -18,13 +37,19 @@ export function bindStageControls(stage: HTMLElement, viewport: Viewport): void 
     (event) => {
       event.preventDefault();
       const rect = stage.getBoundingClientRect();
+      const dx = wheelPixels(event, event.deltaX, rect.width);
+      const dy = wheelPixels(event, event.deltaY, rect.height);
+
       if (event.ctrlKey || event.metaKey) {
-        const factor = Math.exp(-event.deltaY * 0.01);
+        // Um clique da roda (~100 px) ≈ 15% de zoom; pinça no touchpad manda
+        // deltas pequenos e fica fluida. O limite evita saltos em rolagens rápidas.
+        const delta = Math.max(-MAX_ZOOM_DELTA, Math.min(MAX_ZOOM_DELTA, dy));
+        const factor = Math.exp(-delta * ZOOM_SENSITIVITY);
         viewport.setZoom(viewport.zoom * factor, event.clientX - rect.left, event.clientY - rect.top);
-      } else if (event.shiftKey && !event.deltaX) {
-        viewport.panBy(-event.deltaY, 0);
+      } else if (event.shiftKey && !dx) {
+        viewport.panBy(-dy, 0);
       } else {
-        viewport.panBy(-event.deltaX, -event.deltaY);
+        viewport.panBy(-dx, -dy);
       }
     },
     { passive: false },
