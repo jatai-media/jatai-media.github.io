@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="hub.pageTitle">Jataí — Free online tools</title>
+    <script>
+      // Aplica o tema antes do CSS para não piscar. Mesma chave de src/shared/theme.ts.
+      (function () {
+        var theme;
+        try { theme = localStorage.getItem('jatai.theme'); } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+    <link rel="icon" type="image/png" href="/logo_jatai.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet" />
+    <script type="module" src="/src/hub/main.ts"></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <a class="brand" href="/">
+          <img src="/logo_jatai.png" alt="" width="32" height="32" />
+          <span data-i18n="common.brand">Jataí</span>
+        </a>
+        <div class="topbar-actions">
+          <div data-theme-toggle></div>
+          <div data-lang-switcher></div>
+        </div>
+      </header>
+
+      <main class="hub">
+        <img class="hub-logo" src="/logo_jatai.png" alt="Jataí" width="180" height="155" />
+        <h1 data-i18n="hub.title">Free tools, right in your browser</h1>
+        <p class="lead" data-i18n="hub.subtitle">No sign-up, no install. Everything runs on your device.</p>
+
+        <nav class="tools">
+          <a class="tool-card" href="/canvas/">
+            <span class="tool-icon" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-4-4-9 9" />
+              </svg>
+            </span>
+            <span class="tool-name" data-i18n="hub.tools.canvas.name">Design editor</span>
+            <span class="tool-desc" data-i18n="hub.tools.canvas.description">Create posts, banners and images with text, shapes and photos.</span>
+            <span class="tool-cta" data-i18n="hub.tools.canvas.open">Open editor</span>
+          </a>
+        </nav>
+      </main>
+
+      <footer class="footer">
+        <a href="https://github.com/jatai-media" data-i18n="hub.footer">Made by Jataí · Open source on GitHub</a>
+      </footer>
+    </div>
+  </body>
+</html>

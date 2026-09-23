@@ -1,0 +1,1 @@
+esse é um projeto, baseado em uma conta nova no github chamado https://github.com/jatai-media, quero fazer desse perfil, um hub utilitario, com ferramentas estilo canvas etc, um index inicial para rotear para as paginas disponiveis, o primeiro trabalho, vamos criar uma alternativa para o canvas, gratuitamente, hospedado no pages, em html, css e typescript 

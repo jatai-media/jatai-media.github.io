@@ -1,0 +1,22 @@
+{
+  "name": "jatai-media-hub",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "watch": "vite build --watch",
+    "server:build": "g++ -std=c++20 -O2 -static server.cpp -o server.exe -lws2_32",
+    "server": ".\\server.exe",
+    "typecheck": "tsc --noEmit",
+    "live": "vite build && concurrently -k -n build,server -c yellow,cyan \"vite build --watch\" \"npm:server\""
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "concurrently": "^10.0.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  }
+}

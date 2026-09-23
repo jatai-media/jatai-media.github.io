@@ -1,0 +1,125 @@
+/* Tema: o <html> recebe data-theme="light" | "dark" (ver src/shared/theme.ts).
+   Toda cor da interface deve vir destes tokens. */
+
+:root {
+  --accent: #ffc107;
+  --accent-2: #ff9800;
+  --accent-text: #111;
+  --radius: 12px;
+  --font: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  color-scheme: light;
+  --bg: #f4f3ef;
+  --surface: #ffffff;
+  --surface-2: #ecebe6;
+  --border: #dcdad3;
+  --text: #1a1917;
+  --text-muted: #67645e;
+  --focus: #d98200;
+  --grid-dot: #00000018;
+  --artboard-shadow: #00000030;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0b0c;
+  --surface: #151517;
+  --surface-2: #1e1e21;
+  --border: #2c2c30;
+  --text: #f7f5f0;
+  --text-muted: #a3a09a;
+  --focus: #ffc107;
+  --grid-dot: #ffffff10;
+  --artboard-shadow: #000000b0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.brand img {
+  border-radius: 8px;
+}
+
+.lang-switcher select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.icon-button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
