@@ -7,7 +7,7 @@ import { unionBounds } from './geometry';
 import type { ElementPatch, ElementType, TextAlign } from './elements';
 import { FONTS, type FontId } from './text-layout';
 import { scaleElements } from './transform';
-import { DEFAULT_BG_REMOVAL, removeBackground } from './background-removal';
+import { backgroundSettings, restoreOriginalImage, updateBackgroundRemoval } from './image-edits';
 
 /** Um controle do painel: o elemento DOM e como atualizá-lo a partir do documento. */
 interface Field {
@@ -34,6 +34,9 @@ const ICONS = {
   group: svg('<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/><rect x="7" y="7" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>'),
   ungroup: svg('<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M15 5h4v4M9 19H5v-4"/>'),
 };
+
+/** Varinha mágica. */
+const WAND_ICON = svg('<path d="m3 21 11-11"/><path d="M15 4V2M15 12v-2M11 6H9M21 6h-2M18.5 3.5 17 5M18.5 8.5 17 7M11.5 3.5 13 5"/>');
 
 /** Cadeado aberto e fechado; o CSS mostra um ou outro conforme aria-pressed. */
 const LOCK_ICONS =
@@ -248,18 +251,18 @@ export function mountPropertiesPanel(editor: Editor): void {
   }
 
   /**
-   * Remoção de fundo da imagem. A primeira aplicação guarda o original; depois
-   * disso, mexer na tolerância ou nas áreas internas reprocessa ao vivo a
-   * partir do original (o passo de desfazer fecha ao soltar o controle).
+   * Remoção de fundo da imagem: pelas bordas (botão), áreas internas e
+   * varinha mágica (cliques na imagem apagam regiões conectadas). Tudo é
+   * reprocessado a partir do original, então a tolerância pode ser ajustada
+   * depois; o passo de desfazer fecha ao soltar cada controle.
    */
   function backgroundField(id: string): Field {
-    const image = () => {
+    const current = () => {
       const el = doc.getElement(id);
       return el?.type === 'image' ? el : undefined;
     };
-    const settings = { ...DEFAULT_BG_REMOVAL, ...image()?.bgRemoval };
-    /** Só o processamento mais recente vale (evita resultados fora de ordem). */
-    let run = 0;
+    const applied = () => current()?.originalSrc !== undefined;
+    let busy = 0;
     let timer = 0;
 
     const root = document.createElement('div');
@@ -285,79 +288,92 @@ export function mountPropertiesPanel(editor: Editor): void {
     interior.type = 'checkbox';
     interiorLabel.append(interior, t('editor.bg.interior'));
 
-    const buttons = document.createElement('div');
-    buttons.className = 'button-pair';
+    const actions = document.createElement('div');
+    actions.className = 'bg-actions';
     const apply = document.createElement('button');
     apply.type = 'button';
     apply.className = 'secondary-button';
+    const wand = document.createElement('button');
+    wand.type = 'button';
+    wand.className = 'icon-button wand-toggle';
+    wand.innerHTML = WAND_ICON;
+    wand.title = t('editor.bg.wand');
+    wand.setAttribute('aria-label', wand.title);
+    actions.append(apply, wand);
+
+    const hint = document.createElement('p');
+    hint.className = 'wand-hint';
+    hint.textContent = t('editor.bg.wandHint');
+
     const restore = document.createElement('button');
     restore.type = 'button';
     restore.className = 'secondary-button';
     restore.textContent = t('editor.bg.restore');
-    buttons.append(apply, restore);
 
-    root.append(label, toleranceHead, tolerance, interiorLabel, buttons);
+    root.append(label, toleranceHead, tolerance, interiorLabel, actions, hint, restore);
 
-    const setBusy = (busy: boolean) => {
-      apply.disabled = busy;
-      apply.textContent = busy ? t('editor.bg.working') : t('editor.bg.apply');
+    /** Roda um reprocessamento mostrando "Processando…" enquanto isso. */
+    const run = (patch: Parameters<typeof updateBackgroundRemoval>[2], commit: boolean) => {
+      busy += 1;
+      render();
+      updateBackgroundRemoval(editor, id, patch, commit)
+        .catch((error) => console.warn(error))
+        .finally(() => {
+          busy -= 1;
+          render();
+        });
     };
 
-    async function process(commit: boolean): Promise<void> {
-      const current = image();
-      if (!current) return;
-      const original = current.originalSrc ?? current.src;
-      const mine = ++run;
-      setBusy(true);
-      try {
-        const src = await removeBackground(original, settings);
-        if (mine !== run || !image()) return;
-        doc.updateElement(id, { src, originalSrc: original, bgRemoval: { ...settings } });
-        if (commit) editor.commit();
-      } catch (error) {
-        console.warn(error);
-      } finally {
-        if (mine === run) setBusy(false);
-      }
-    }
-
-    /** Já removido? Então ajustes reprocessam na hora. */
-    const applied = () => image()?.originalSrc !== undefined;
-
     tolerance.addEventListener('input', () => {
-      settings.tolerance = Number(tolerance.value);
       toleranceValue.textContent = tolerance.value;
-      if (!applied()) return;
+      const value = Number(tolerance.value);
       clearTimeout(timer);
-      timer = window.setTimeout(() => void process(false), 120);
+      // Antes de aplicar, só guarda o valor; depois, reprocessa ao vivo.
+      timer = window.setTimeout(() => (applied() ? run({ tolerance: value }, false) : void 0), 120);
     });
     tolerance.addEventListener('change', () => {
       clearTimeout(timer);
-      if (applied()) void process(true);
+      if (applied()) run({ tolerance: Number(tolerance.value) }, true);
     });
     interior.addEventListener('change', () => {
-      settings.interior = interior.checked;
-      if (applied()) void process(true);
+      const patch = { interior: interior.checked, tolerance: Number(tolerance.value) };
+      if (applied()) run(patch, true);
     });
-    apply.addEventListener('click', () => void process(true));
+    apply.addEventListener('click', () => {
+      run({ edges: true, interior: interior.checked, tolerance: Number(tolerance.value) }, true);
+    });
+    wand.addEventListener('click', () => editor.setWand(editor.ui.wandTarget === id ? null : id));
     restore.addEventListener('click', () => {
-      const current = image();
-      if (!current?.originalSrc) return;
-      run += 1;
-      doc.updateElement(id, { src: current.originalSrc, originalSrc: undefined, bgRemoval: undefined });
-      editor.commit();
+      editor.setWand(null);
+      restoreOriginalImage(editor, id);
     });
 
-    setBusy(false);
+    function render(): void {
+      apply.disabled = busy > 0;
+      apply.textContent = busy > 0 ? t('editor.bg.working') : t('editor.bg.apply');
+      const active = editor.ui.wandTarget === id;
+      wand.setAttribute('aria-pressed', String(active));
+      hint.hidden = !active;
+      restore.hidden = !applied();
+    }
+
+    const unsubscribe = editor.onWandChange(render);
+    // Desliga a escuta quando o painel for reconstruído (o campo sai do DOM).
+    new MutationObserver((_, observer) => {
+      if (!root.isConnected) {
+        unsubscribe();
+        observer.disconnect();
+      }
+    }).observe(panel, { childList: true });
+
     return {
       root,
       sync() {
-        const saved = image()?.bgRemoval;
-        if (saved) Object.assign(settings, saved);
-        tolerance.value = String(settings.tolerance);
+        const settings = backgroundSettings(editor, id);
+        if (document.activeElement !== tolerance) tolerance.value = String(settings.tolerance);
         toleranceValue.textContent = tolerance.value;
         interior.checked = settings.interior;
-        restore.hidden = !applied();
+        render();
       },
     };
   }

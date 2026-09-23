@@ -113,6 +113,8 @@ const es: Messages = {
       apply: 'Quitar fondo',
       working: 'Procesando…',
       restore: 'Restaurar original',
+      wand: 'Varita mágica: haz clic en áreas de la imagen para borrarlas',
+      wandHint: 'Haz clic en las áreas a borrar. Solo se quita la región conectada. Esc para terminar.',
     },
     menu: {
       rename: 'Cambiar nombre',

@@ -113,6 +113,8 @@ const ptBR: Messages = {
       apply: 'Remover fundo',
       working: 'Processando…',
       restore: 'Restaurar original',
+      wand: 'Varinha mágica: clique em áreas da imagem para apagá-las',
+      wandHint: 'Clique nas áreas a apagar. Só a região conectada ao clique sai. Esc para terminar.',
     },
     menu: {
       rename: 'Renomear',

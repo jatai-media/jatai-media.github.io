@@ -18,6 +18,8 @@ export interface UiState {
   editingId: string | null;
   /** Guias de alinhamento visíveis durante um arraste. */
   guides: Guide[];
+  /** Imagem com a varinha mágica ativa (cliques nela apagam regiões). */
+  wandTarget: string | null;
 }
 
 /** Tudo o que os módulos do editor compartilham. Montado em main.ts. */
@@ -37,6 +39,9 @@ export interface Editor {
   editText(id: string): void;
   /** Abre a edição do nome do grupo na lista de camadas. */
   renameGroup(groupId: string): void;
+  /** Liga a varinha mágica numa imagem (ou desliga, com null). */
+  setWand(imageId: string | null): void;
+  onWandChange(listener: () => void): () => void;
   fitView(): void;
 }
 

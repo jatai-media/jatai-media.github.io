@@ -117,6 +117,8 @@ const en = {
       apply: 'Remove background',
       working: 'Processing…',
       restore: 'Restore original',
+      wand: 'Magic wand: click areas of the image to erase them',
+      wandHint: 'Click the areas to erase. Only the connected region is removed. Esc to finish.',
     },
     menu: {
       rename: 'Rename',

@@ -43,7 +43,8 @@ const viewport = new Viewport();
 const selection = new SelectionModel();
 const history = new UndoHistory(doc);
 const prefs: EditorPrefs = { lockAspect: false };
-const ui: UiState = { hoverIds: [], marquee: null, editingId: null, guides: [] };
+const ui: UiState = { hoverIds: [], marquee: null, editingId: null, guides: [], wandTarget: null };
+const wandListeners = new Set<() => void>();
 let tool: ToolId = 'select';
 
 const editor: Editor = {
@@ -62,6 +63,16 @@ const editor: Editor = {
   commit: () => history.commit(),
   editText: (id) => textEditor.open(id),
   renameGroup: (groupId) => layers.rename(groupId),
+  setWand(imageId) {
+    if (ui.wandTarget === imageId) return;
+    ui.wandTarget = imageId;
+    stage.classList.toggle('is-wand', imageId !== null);
+    wandListeners.forEach((listener) => listener());
+  },
+  onWandChange(listener) {
+    wandListeners.add(listener);
+    return () => wandListeners.delete(listener);
+  },
   fitView,
 };
 
@@ -110,6 +121,7 @@ function selectTool(id: ToolId): void {
   }
   tool = id;
   stage.dataset.tool = id;
+  editor.setWand(null);
   if (id !== 'select') selection.clear();
   toolbar.querySelectorAll<HTMLButtonElement>('.tool-button').forEach((button) => {
     button.setAttribute('aria-pressed', String(button.dataset.tool === id));
@@ -178,6 +190,8 @@ function bindShortcuts(): void {
       return deleteSelection(editor);
     }
     if (event.key === 'Escape') {
+      // Primeiro Esc só desliga a varinha mágica.
+      if (ui.wandTarget) return editor.setWand(null);
       // Dentro de um grupo, Esc volta a selecionar o grupo inteiro.
       const group = enteredGroup(editor);
       if (group) return selection.set(doc.groupMembers(group).map((el) => el.id));
@@ -237,7 +251,11 @@ doc.onChange(() => {
   renderHistoryButtons();
 });
 viewport.onChange(refresh);
-selection.onChange(() => renderer.request());
+selection.onChange(() => {
+  // A varinha vale só enquanto a imagem dela estiver selecionada.
+  if (ui.wandTarget && !selection.has(ui.wandTarget)) editor.setWand(null);
+  renderer.request();
+});
 history.onChange(renderHistoryButtons);
 onLocaleChange(refresh);
 onThemeChange(() => renderer.request());

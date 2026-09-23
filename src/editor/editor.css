@@ -575,16 +575,45 @@ body {
   accent-color: var(--accent-2);
 }
 
-.button-pair {
+.bg-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-template-columns: 1fr auto;
   gap: 6px;
   margin-top: 4px;
 }
 
-.button-pair .secondary-button {
+.bg-removal .secondary-button {
   margin: 0;
   padding-inline: 6px;
+  /* .field deixa o texto apagado; botões usam a cor normal. */
+  color: var(--text);
+}
+
+.bg-actions .wand-toggle {
+  width: 36px;
+  height: 34px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.bg-actions .wand-toggle[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.panel .wand-hint {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.stage.is-wand #stage-canvas {
+  cursor: crosshair;
 }
 
 .secondary-button:disabled {

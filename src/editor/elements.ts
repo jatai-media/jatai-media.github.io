@@ -73,8 +73,13 @@ export interface ImageElement extends BaseElement {
   src: string;
   /** Imagem original, guardada enquanto o fundo estiver removido (permite reajustar e restaurar). */
   originalSrc?: string;
-  /** Ajustes usados na remoção de fundo atual. */
-  bgRemoval?: { tolerance: number; interior: boolean };
+  /** Ajustes usados na remoção de fundo atual (ver background-removal.ts). */
+  bgRemoval?: {
+    tolerance: number;
+    edges: boolean;
+    interior: boolean;
+    seeds: readonly (readonly [number, number])[];
+  };
 }
 
 export type DesignElement =

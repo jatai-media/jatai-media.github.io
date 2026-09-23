@@ -22,6 +22,7 @@ import {
 } from './geometry';
 import { openSelectionMenu } from './context-menus';
 import { clickTarget, expandToGroups, selectedGroup } from './groups';
+import { addWandPoint } from './image-edits';
 import { HANDLE_HIT_RADIUS } from './renderer';
 import { collectTargets, resizeGuides, SNAP_THRESHOLD, snapMove, snapResizeEdges } from './snapping';
 import { scaleElements } from './transform';
@@ -289,6 +290,27 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     editor.editText(el.id);
   }
 
+  // ---- Varinha mágica -------------------------------------------------------
+
+  /** Com a varinha ativa, clique na imagem apaga a região; fora dela, desliga a varinha. */
+  function wandClick(pos: PointerPos): boolean {
+    const el = doc.getElement(ui.wandTarget!);
+    const inside =
+      el?.type === 'image' &&
+      el.width > 0 &&
+      el.height > 0 &&
+      pos.doc.x >= el.x &&
+      pos.doc.x <= el.x + el.width &&
+      pos.doc.y >= el.y &&
+      pos.doc.y <= el.y + el.height;
+    if (!inside) {
+      editor.setWand(null);
+      return false;
+    }
+    void addWandPoint(editor, el.id, [(pos.doc.x - el.x) / el.width, (pos.doc.y - el.y) / el.height]);
+    return true;
+  }
+
   // ---- Eventos -------------------------------------------------------------
 
   canvas.addEventListener('pointerdown', (event) => {
@@ -298,6 +320,7 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 
     const pos = position(event);
+    if (editor.tool === 'select' && ui.wandTarget && wandClick(pos)) return;
     switch (editor.tool) {
       case 'select':
         gesture = startSelect(pos, event);
@@ -327,7 +350,8 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
       gesture.move(pos, event);
       return;
     }
-    if (editor.tool !== 'select') {
+    // Fora da seleção (ou com a varinha ativa) o cursor vem do CSS e não há destaque.
+    if (editor.tool !== 'select' || ui.wandTarget) {
       canvas.style.cursor = '';
       return;
     }
