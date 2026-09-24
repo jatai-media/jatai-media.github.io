@@ -8,6 +8,13 @@ import type { Guide } from './snapping';
 import type { ToolId } from './tools';
 import type { Viewport } from './viewport';
 
+export type ImageToolMode = 'wand' | 'erase' | 'restore';
+
+export interface ImageTool {
+  id: string;
+  mode: ImageToolMode;
+}
+
 /** Estado passageiro da interface, desenhado por cima do design. */
 export interface UiState {
   /** Elementos sob o ponteiro (o grupo inteiro, se for o caso). */
@@ -18,8 +25,16 @@ export interface UiState {
   editingId: string | null;
   /** Guias de alinhamento visíveis durante um arraste. */
   guides: Guide[];
-  /** Imagem com a varinha mágica ativa (cliques nela apagam regiões). */
-  wandTarget: string | null;
+  /** Ferramenta de imagem ativa (varinha, borracha, restaurar) e a imagem em que atua. */
+  imageTool: ImageTool | null;
+  /** Prévia ao vivo de um traço de pincel (desenhada no lugar da imagem enquanto se arrasta). */
+  imagePreview: { id: string; canvas: HTMLCanvasElement } | null;
+  /** Círculo da ponta do pincel, em coordenadas do documento. */
+  brushCursor: { x: number; y: number; radius: number } | null;
+  /** Camada de desenho que recebe os próximos traços (com "juntar traços" ligado). */
+  drawingId: string | null;
+  /** Conta-gotas no canvas (navegadores sem EyeDropper): recebe a cor do próximo clique. */
+  colorPick: ((color: string) => void) | null;
 }
 
 /** Tudo o que os módulos do editor compartilham. Montado em main.ts. */
@@ -33,15 +48,16 @@ export interface Editor {
   readonly stage: HTMLElement;
   readonly tool: ToolId;
   setTool(id: ToolId): void;
+  onToolChange(listener: () => void): () => void;
   requestRender(): void;
   /** Fecha um passo de desfazer (chame ao terminar cada operação). */
   commit(): void;
   editText(id: string): void;
   /** Abre a edição do nome do grupo na lista de camadas. */
   renameGroup(groupId: string): void;
-  /** Liga a varinha mágica numa imagem (ou desliga, com null). */
-  setWand(imageId: string | null): void;
-  onWandChange(listener: () => void): () => void;
+  /** Liga uma ferramenta de imagem (ou desliga, com null). */
+  setImageTool(tool: ImageTool | null): void;
+  onImageToolChange(listener: () => void): () => void;
   fitView(): void;
 }
 

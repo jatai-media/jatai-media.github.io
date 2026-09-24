@@ -14,6 +14,15 @@ import { preloadImage } from './images';
 /** Ponto da varinha, normalizado (0–1) na imagem original. */
 export type WandPoint = readonly [x: number, y: number];
 
+/** Traço de pincel sobre a imagem: apaga ou traz de volta o original. */
+export interface BrushStroke {
+  mode: 'erase' | 'restore';
+  /** Diâmetro da ponta, relativo à largura da imagem. */
+  size: number;
+  /** [x, y, x, y, ...] normalizados (0–1) na imagem. */
+  points: readonly number[];
+}
+
 export interface BackgroundRemovalOptions {
   /** 0–100: quão diferente da cor de referência um pixel pode ser e ainda sair. */
   tolerance: number;
@@ -23,9 +32,67 @@ export interface BackgroundRemovalOptions {
   interior: boolean;
   /** Regiões apagadas com a varinha mágica. */
   seeds: readonly WandPoint[];
+  /** Traços de borracha/restaurar, aplicados por último, na ordem. */
+  strokes: readonly BrushStroke[];
 }
 
-export const DEFAULT_BG_REMOVAL: BackgroundRemovalOptions = { tolerance: 20, edges: false, interior: false, seeds: [] };
+export const DEFAULT_BG_REMOVAL: BackgroundRemovalOptions = {
+  tolerance: 20,
+  edges: false,
+  interior: false,
+  seeds: [],
+  strokes: [],
+};
+
+function traceStroke(ctx: CanvasRenderingContext2D, stroke: BrushStroke, width: number, height: number): void {
+  const pts = stroke.points;
+  ctx.beginPath();
+  ctx.moveTo(pts[0] * width, pts[1] * height);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i] * width, pts[i + 1] * height);
+  if (pts.length === 2) ctx.lineTo(pts[0] * width + 0.01, pts[1] * height);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(1, stroke.size * width);
+  ctx.strokeStyle = '#000';
+  ctx.stroke();
+}
+
+/**
+ * Aplica traços de pincel sobre `ctx` (já com a imagem processada):
+ * borracha tira os pixels; restaurar pinta de volta o `original`.
+ * Usado no resultado final e na prévia ao vivo enquanto se arrasta.
+ */
+export function applyBrushStrokes(
+  ctx: CanvasRenderingContext2D,
+  original: CanvasImageSource,
+  strokes: readonly BrushStroke[],
+  width: number,
+  height: number,
+): void {
+  let mask: CanvasRenderingContext2D | null = null;
+  for (const stroke of strokes) {
+    if (stroke.mode === 'erase') {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      traceStroke(ctx, stroke, width, height);
+      ctx.restore();
+      continue;
+    }
+    // Restaurar: recorta o original no formato do traço e pinta por cima.
+    if (!mask) {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      mask = canvas.getContext('2d')!;
+    }
+    mask.globalCompositeOperation = 'source-over';
+    mask.clearRect(0, 0, width, height);
+    traceStroke(mask, stroke, width, height);
+    mask.globalCompositeOperation = 'source-in';
+    mask.drawImage(original, 0, 0, width, height);
+    ctx.drawImage(mask.canvas, 0, 0);
+  }
+}
 
 /**
  * Faixa (na escala 0–255 de distância) em que o contorno fica semitransparente
@@ -184,6 +251,7 @@ export async function removeBackground(src: string, options: BackgroundRemovalOp
   }
 
   ctx.putImageData(image, 0, 0);
+  if (options.strokes.length) applyBrushStrokes(ctx, img, options.strokes, width, height);
   const result = canvas.toDataURL('image/png');
   await preloadImage(result);
   return result;

@@ -1,4 +1,10 @@
-import { DEFAULT_BG_REMOVAL, removeBackground, type BackgroundRemovalOptions, type WandPoint } from './background-removal';
+import {
+  DEFAULT_BG_REMOVAL,
+  removeBackground,
+  type BackgroundRemovalOptions,
+  type BrushStroke,
+  type WandPoint,
+} from './background-removal';
 import type { Editor } from './editor';
 import type { ImageElement } from './elements';
 
@@ -49,6 +55,12 @@ export async function updateBackgroundRemoval(
 export function addWandPoint(editor: Editor, id: string, point: WandPoint): Promise<void> {
   const seeds = [...backgroundSettings(editor, id).seeds, point];
   return updateBackgroundRemoval(editor, id, { seeds }, true);
+}
+
+/** Grava um traço de borracha/restaurar (pontos normalizados na imagem). */
+export function addBrushStroke(editor: Editor, id: string, stroke: BrushStroke): Promise<void> {
+  const strokes = [...backgroundSettings(editor, id).strokes, stroke];
+  return updateBackgroundRemoval(editor, id, { strokes }, true);
 }
 
 /** Volta à imagem original, sem nenhuma remoção. */

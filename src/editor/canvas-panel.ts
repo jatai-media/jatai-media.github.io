@@ -1,5 +1,6 @@
 import { onLocaleChange, t } from '../i18n';
 import { fitWithinLimits, SIZE_LIMITS } from './document';
+import { pickColor } from './color-picker';
 import type { Editor } from './editor';
 import { findPreset, SIZE_PRESETS } from './presets';
 
@@ -25,6 +26,7 @@ export function mountCanvasPanel(editor: Editor): void {
   const swap = $<HTMLButtonElement>('#canvas-swap');
   const color = $<HTMLInputElement>('#canvas-background');
   const hex = $<HTMLInputElement>('#canvas-background-hex');
+  const pick = $<HTMLButtonElement>('#canvas-background-pick');
 
   for (const input of [width, height]) {
     input.min = String(SIZE_LIMITS.min);
@@ -98,6 +100,13 @@ export function mountCanvasPanel(editor: Editor): void {
       editor.commit();
     }
     hex.value = doc.background.toUpperCase();
+  });
+
+  pick.addEventListener('click', async () => {
+    const picked = await pickColor(editor);
+    if (!picked) return;
+    doc.setBackground(picked);
+    editor.commit();
   });
 
   doc.onChange(sync);

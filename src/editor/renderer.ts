@@ -5,7 +5,11 @@ import { handlePoint, handlesFor, unionBounds, type Rect } from './geometry';
 const SELECTION_COLOR = '#ff9800';
 /** Guias de alinhamento: cor diferente da seleção para não se confundirem. */
 const GUIDE_COLOR = '#ff2d87';
-const HANDLE_SIZE = 8;
+/** Alças maiores quando o dispositivo principal é de toque. */
+const COARSE_POINTER = window.matchMedia('(pointer: coarse)').matches;
+const HANDLE_SIZE = COARSE_POINTER ? 12 : 8;
+/** A partir deste zoom as imagens aparecem sem suavização (pixels visíveis). */
+const PIXELATED_ZOOM = 4;
 
 function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -63,8 +67,19 @@ export class StageRenderer {
     ctx.beginPath();
     ctx.rect(0, 0, doc.width, doc.height);
     ctx.clip();
+    // Com bastante zoom, mostra os pixels das imagens nítidos (bom para ajustes finos).
+    ctx.imageSmoothingEnabled = zoom < PIXELATED_ZOOM;
     for (const el of doc.elements) {
-      if (el.id !== ui.editingId) drawElement(ctx, el);
+      if (el.id === ui.editingId) continue;
+      if (el.type === 'image' && ui.imagePreview?.id === el.id) {
+        // Traço de borracha/restaurar em andamento.
+        ctx.save();
+        ctx.globalAlpha = el.opacity;
+        ctx.drawImage(ui.imagePreview.canvas, el.x, el.y, el.width, el.height);
+        ctx.restore();
+      } else {
+        drawElement(ctx, el);
+      }
     }
     ctx.restore();
 
@@ -129,6 +144,22 @@ export class StageRenderer {
           ctx.lineTo(viewport.toScreen(guide.end, 0).x, y);
         }
       }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (ui.brushCursor) {
+      // Círculo da ponta: contorno duplo (claro e escuro) aparece em qualquer fundo.
+      const center = viewport.toScreen(ui.brushCursor.x, ui.brushCursor.y);
+      const radius = Math.max(1, ui.brushCursor.radius * viewport.zoom);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#000000aa';
+      ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#ffffff';
       ctx.stroke();
       ctx.restore();
     }

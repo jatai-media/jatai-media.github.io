@@ -1,4 +1,4 @@
-import { absolutePoints, type DesignElement } from './elements';
+import { absolutePoints, absoluteStrokes, type DesignElement } from './elements';
 import { getImage } from './images';
 import { baselineOffset, fontString } from './text-layout';
 
@@ -26,20 +26,12 @@ export function drawElement(ctx: CanvasRenderingContext2D, el: DesignElement): v
       break;
 
     case 'line':
-    case 'path': {
-      const points = absolutePoints(el);
-      ctx.beginPath();
-      ctx.moveTo(points[0], points[1]);
-      for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
-      // Um único ponto vira um pingo.
-      if (points.length === 2) ctx.lineTo(points[0] + 0.01, points[1]);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = el.strokeWidth;
-      ctx.strokeStyle = el.stroke;
-      ctx.stroke();
+      strokePolyline(ctx, absolutePoints(el), el.stroke, el.strokeWidth);
       break;
-    }
+
+    case 'path':
+      for (const stroke of absoluteStrokes(el)) strokePolyline(ctx, stroke.points, stroke.color, stroke.width);
+      break;
 
     case 'text': {
       const lineHeight = el.fontSize * el.lineHeight;
@@ -66,6 +58,19 @@ export function drawElement(ctx: CanvasRenderingContext2D, el: DesignElement): v
   }
 
   ctx.restore();
+}
+
+/** Linha com pontas e juntas arredondadas; um único ponto vira um pingo. */
+function strokePolyline(ctx: CanvasRenderingContext2D, points: readonly number[], color: string, width: number): void {
+  ctx.beginPath();
+  ctx.moveTo(points[0], points[1]);
+  for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
+  if (points.length === 2) ctx.lineTo(points[0] + 0.01, points[1]);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = width;
+  ctx.strokeStyle = color;
+  ctx.stroke();
 }
 
 function fillAndStroke(ctx: CanvasRenderingContext2D, fill: string, stroke: string, strokeWidth: number): void {

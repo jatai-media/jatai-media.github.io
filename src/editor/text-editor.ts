@@ -1,6 +1,9 @@
 import type { Editor } from './editor';
 import { fontCss } from './text-layout';
 
+/** Menor fonte de campo que o iOS aceita sem dar zoom na página ao focar. */
+const MIN_INPUT_FONT = 16;
+
 /**
  * Edição de texto no lugar: um <textarea> transparente posicionado
  * exatamente sobre o elemento. Enquanto edita, o canvas não desenha esse
@@ -22,11 +25,15 @@ export function createTextEditor(editor: Editor): { open(id: string): void } {
     if (!el || el.type !== 'text') return;
     const p = viewport.toScreen(el.x, el.y);
     const zoom = viewport.zoom;
+    // Fonte mínima de 16px (o iOS dá zoom na página em campos menores) e
+    // escala visual para compensar: o texto aparece no tamanho certo.
+    const fontPx = el.fontSize * zoom;
+    const scale = fontPx < MIN_INPUT_FONT ? fontPx / MIN_INPUT_FONT : 1;
     Object.assign(textarea.style, {
-      transform: `translate(${p.x}px, ${p.y}px)`,
-      width: `${el.width * zoom + 2}px`,
-      height: `${el.height * zoom}px`,
-      font: `${el.fontWeight} ${el.fontSize * zoom}px ${fontCss(el.fontFamily)}`,
+      transform: `translate(${p.x}px, ${p.y}px) scale(${scale})`,
+      width: `${(el.width * zoom + 2) / scale}px`,
+      height: `${(el.height * zoom) / scale}px`,
+      font: `${el.fontWeight} ${fontPx / scale}px ${fontCss(el.fontFamily)}`,
       lineHeight: String(el.lineHeight),
       color: el.color,
       opacity: String(el.opacity),

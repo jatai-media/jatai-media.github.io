@@ -8,7 +8,8 @@ import { mountArtboardHandles } from './artboard-handles';
 import { mountCanvasPanel } from './canvas-panel';
 import { bindClipboard } from './clipboard';
 import { DesignDocument } from './document';
-import type { Editor, UiState } from './editor';
+import { selectedElements, type Editor, type UiState } from './editor';
+import { unionBounds } from './geometry';
 import { enteredGroup, groupSelection, selectedGroup, ungroupSelection } from './groups';
 import { exportPng } from './export';
 import { UndoHistory } from './history';
@@ -42,9 +43,24 @@ const doc = new DesignDocument(1080, 1080);
 const viewport = new Viewport();
 const selection = new SelectionModel();
 const history = new UndoHistory(doc);
-const prefs: EditorPrefs = { lockAspect: false };
-const ui: UiState = { hoverIds: [], marquee: null, editingId: null, guides: [], wandTarget: null };
-const wandListeners = new Set<() => void>();
+const prefs: EditorPrefs = {
+  lockAspect: false,
+  brush: { color: '#1a1917', width: 6, merge: true },
+  imageBrushSize: 20,
+};
+const ui: UiState = {
+  hoverIds: [],
+  marquee: null,
+  editingId: null,
+  guides: [],
+  imageTool: null,
+  imagePreview: null,
+  brushCursor: null,
+  drawingId: null,
+  colorPick: null,
+};
+const toolListeners = new Set<() => void>();
+const imageToolListeners = new Set<() => void>();
 let tool: ToolId = 'select';
 
 const editor: Editor = {
@@ -59,19 +75,26 @@ const editor: Editor = {
     return tool;
   },
   setTool: (id) => selectTool(id),
+  onToolChange(listener) {
+    toolListeners.add(listener);
+    return () => toolListeners.delete(listener);
+  },
   requestRender: () => renderer.request(),
   commit: () => history.commit(),
   editText: (id) => textEditor.open(id),
   renameGroup: (groupId) => layers.rename(groupId),
-  setWand(imageId) {
-    if (ui.wandTarget === imageId) return;
-    ui.wandTarget = imageId;
-    stage.classList.toggle('is-wand', imageId !== null);
-    wandListeners.forEach((listener) => listener());
+  setImageTool(next) {
+    if (ui.imageTool?.id === next?.id && ui.imageTool?.mode === next?.mode) return;
+    ui.imageTool = next;
+    ui.brushCursor = null;
+    if (next) stage.dataset.imageTool = next.mode;
+    else delete stage.dataset.imageTool;
+    imageToolListeners.forEach((listener) => listener());
+    renderer.request();
   },
-  onWandChange(listener) {
-    wandListeners.add(listener);
-    return () => wandListeners.delete(listener);
+  onImageToolChange(listener) {
+    imageToolListeners.add(listener);
+    return () => imageToolListeners.delete(listener);
   },
   fitView,
 };
@@ -110,8 +133,24 @@ function renderToolbar(): void {
       button.addEventListener('click', () => selectTool(item.id));
       return button;
     }),
+    panelToggle,
   );
 }
+
+// No celular o painel vira uma gaveta que sobe de baixo, aberta por este botão.
+const editorRoot = $('.editor');
+const panelToggle = document.createElement('button');
+panelToggle.type = 'button';
+panelToggle.className = 'tool-button panel-toggle';
+panelToggle.dataset.i18nAttr = 'title:editor.mobile.panel;aria-label:editor.mobile.panel';
+panelToggle.innerHTML =
+  '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/></svg>';
+const setPanelOpen = (open: boolean) => {
+  editorRoot.classList.toggle('panel-open', open);
+  panelToggle.setAttribute('aria-pressed', String(open));
+};
+panelToggle.addEventListener('click', () => setPanelOpen(!editorRoot.classList.contains('panel-open')));
+$('#panel-close').addEventListener('click', () => setPanelOpen(false));
 
 function selectTool(id: ToolId): void {
   // "Imagem" não é um modo: abre o seletor de arquivos e continua na ferramenta atual.
@@ -121,12 +160,15 @@ function selectTool(id: ToolId): void {
   }
   tool = id;
   stage.dataset.tool = id;
-  editor.setWand(null);
+  editor.setImageTool(null);
+  // Trocar de ferramenta fecha o desenho atual (o próximo traço vira outra camada).
+  ui.drawingId = null;
   if (id !== 'select') selection.clear();
   toolbar.querySelectorAll<HTMLButtonElement>('.tool-button').forEach((button) => {
     button.setAttribute('aria-pressed', String(button.dataset.tool === id));
   });
   renderStatus();
+  toolListeners.forEach((listener) => listener());
 }
 
 /** Textos gerados por código: sempre via t(), e re-renderizados ao trocar o idioma. */
@@ -171,6 +213,12 @@ function bindShortcuts(): void {
 
     // Zoom: Shift+1 enquadra, Shift+0 vai para 100% (como no Figma).
     if (event.shiftKey && event.code === 'Digit1') return fitView();
+    // Shift+2 enquadra a seleção (bom para ajustes finos numa imagem).
+    if (event.shiftKey && event.code === 'Digit2') {
+      const bounds = unionBounds(selectedElements(editor));
+      if (bounds) viewport.fitRect(bounds, stage.clientWidth, stage.clientHeight);
+      return;
+    }
     if (event.shiftKey && event.code === 'Digit0') {
       return viewport.setZoom(1, stage.clientWidth / 2, stage.clientHeight / 2);
     }
@@ -190,8 +238,13 @@ function bindShortcuts(): void {
       return deleteSelection(editor);
     }
     if (event.key === 'Escape') {
-      // Primeiro Esc só desliga a varinha mágica.
-      if (ui.wandTarget) return editor.setWand(null);
+      // Primeiro Esc só desliga a ferramenta de imagem (varinha/borracha/restaurar).
+      if (ui.imageTool) return editor.setImageTool(null);
+      // No desenho, Esc fecha a camada atual: o próximo traço começa outra.
+      if (tool === 'draw' && ui.drawingId) {
+        ui.drawingId = null;
+        return;
+      }
       // Dentro de um grupo, Esc volta a selecionar o grupo inteiro.
       const group = enteredGroup(editor);
       if (group) return selection.set(doc.groupMembers(group).map((el) => el.id));
@@ -233,8 +286,9 @@ const updateArtboardHandles = mountArtboardHandles(editor);
 mountCanvasPanel(editor);
 mountPropertiesPanel(editor);
 const layers = mountLayersPanel(editor);
-bindStageControls(stage, viewport);
-bindInteractions(editor, canvas);
+// O segundo dedo de um pinçar cancela o gesto de um dedo que já tinha começado.
+bindStageControls(stage, viewport, () => interactions.cancelGesture());
+const interactions = bindInteractions(editor, canvas);
 bindClipboard(editor);
 bindImageDrop(editor);
 bindShortcuts();
@@ -252,8 +306,8 @@ doc.onChange(() => {
 });
 viewport.onChange(refresh);
 selection.onChange(() => {
-  // A varinha vale só enquanto a imagem dela estiver selecionada.
-  if (ui.wandTarget && !selection.has(ui.wandTarget)) editor.setWand(null);
+  // A ferramenta de imagem vale só enquanto a imagem dela estiver selecionada.
+  if (ui.imageTool && !selection.has(ui.imageTool.id)) editor.setImageTool(null);
   renderer.request();
 });
 history.onChange(renderHistoryButtons);

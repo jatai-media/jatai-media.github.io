@@ -1,6 +1,6 @@
 import { onLocaleChange, t, type TranslationKey } from '../i18n';
 import { arrangeSelection, deleteSelection, duplicateSelection } from './actions';
-import { selectedElements, type Editor } from './editor';
+import { selectedElements, type Editor, type ImageToolMode } from './editor';
 import { ELEMENT_LABELS } from './element-meta';
 import { groupDisplayName, groupSelection, groupsInSelection, selectedGroup, ungroupSelection } from './groups';
 import { unionBounds } from './geometry';
@@ -8,6 +8,8 @@ import type { ElementPatch, ElementType, TextAlign } from './elements';
 import { FONTS, type FontId } from './text-layout';
 import { scaleElements } from './transform';
 import { backgroundSettings, restoreOriginalImage, updateBackgroundRemoval } from './image-edits';
+import { pickColor } from './color-picker';
+import { BRUSH_LIMITS } from './prefs';
 
 /** Um controle do painel: o elemento DOM e como atualizá-lo a partir do documento. */
 interface Field {
@@ -35,8 +37,23 @@ const ICONS = {
   ungroup: svg('<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M15 5h4v4M9 19H5v-4"/>'),
 };
 
+/** Conta-gotas. */
+const EYEDROPPER_ICON = svg('<path d="m2 22 1-1h3l9-9M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>', 16);
+
 /** Varinha mágica. */
 const WAND_ICON = svg('<path d="m3 21 11-11"/><path d="M15 4V2M15 12v-2M11 6H9M21 6h-2M18.5 3.5 17 5M18.5 8.5 17 7M11.5 3.5 13 5"/>');
+
+const ERASER_ICON = svg('<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l10-10a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 19"/><path d="M22 21H7M5 11l9 9"/>');
+const RESTORE_BRUSH_ICON = svg('<path d="m9.1 11.9 3 3M21.6 2.4a2 2 0 0 0-2.8 0L11 10.2l2.8 2.8 7.8-7.8a2 2 0 0 0 0-2.8Z"/><path d="M8 13.5c-2.5 0-4.5 2-4.5 4.5v2.5H6c2.5 0 4.5-2 4.5-4.5"/>');
+
+/** Tamanho da ponta da borracha/restaurar, em pixels da imagem. */
+const IMAGE_BRUSH_LIMITS = { min: 1, max: 200 } as const;
+
+const IMAGE_TOOL_MODES: readonly { mode: ImageToolMode; icon: string; titleKey: TranslationKey; hintKey: TranslationKey }[] = [
+  { mode: 'wand', icon: WAND_ICON, titleKey: 'editor.bg.wand', hintKey: 'editor.bg.wandHint' },
+  { mode: 'erase', icon: ERASER_ICON, titleKey: 'editor.bg.erase', hintKey: 'editor.bg.eraseHint' },
+  { mode: 'restore', icon: RESTORE_BRUSH_ICON, titleKey: 'editor.bg.restoreBrush', hintKey: 'editor.bg.restoreBrushHint' },
+];
 
 /** Cadeado aberto e fechado; o CSS mostra um ou outro conforme aria-pressed. */
 const LOCK_ICONS =
@@ -147,7 +164,21 @@ export function mountPropertiesPanel(editor: Editor): void {
     hex.maxLength = 7;
     hex.spellcheck = false;
     hex.autocomplete = 'off';
-    wrap.append(picker, hex);
+    const eyedropper = document.createElement('button');
+    eyedropper.type = 'button';
+    eyedropper.className = 'icon-button eyedropper';
+    eyedropper.innerHTML = EYEDROPPER_ICON;
+    eyedropper.title = t('editor.props.pickColor');
+    eyedropper.setAttribute('aria-label', eyedropper.title);
+    eyedropper.addEventListener('click', async () => {
+      const color = await pickColor(editor);
+      if (!color) return;
+      set(color);
+      editor.commit();
+      // Cores fora do documento (ex.: pincel) não disparam re-sincronização sozinhas.
+      sync();
+    });
+    wrap.append(picker, hex, eyedropper);
     root.append(wrap);
 
     const sync = () => {
@@ -156,7 +187,10 @@ export function mountPropertiesPanel(editor: Editor): void {
       picker.value = value;
       if (!isFocused(hex)) hex.value = value.toUpperCase();
     };
-    picker.addEventListener('input', () => set(picker.value));
+    picker.addEventListener('input', () => {
+      set(picker.value);
+      sync();
+    });
     picker.addEventListener('change', () => editor.commit());
     hex.addEventListener('change', () => {
       const match = HEX_COLOR.exec(hex.value.trim());
@@ -288,29 +322,55 @@ export function mountPropertiesPanel(editor: Editor): void {
     interior.type = 'checkbox';
     interiorLabel.append(interior, t('editor.bg.interior'));
 
-    const actions = document.createElement('div');
-    actions.className = 'bg-actions';
     const apply = document.createElement('button');
     apply.type = 'button';
     apply.className = 'secondary-button';
-    const wand = document.createElement('button');
-    wand.type = 'button';
-    wand.className = 'icon-button wand-toggle';
-    wand.innerHTML = WAND_ICON;
-    wand.title = t('editor.bg.wand');
-    wand.setAttribute('aria-label', wand.title);
-    actions.append(apply, wand);
+
+    // Ferramentas de ajuste fino: varinha (clique), borracha e restaurar (arrastar).
+    const tools = document.createElement('div');
+    tools.className = 'image-tools';
+    const modes = IMAGE_TOOL_MODES.map(({ mode, icon, titleKey }) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'icon-button image-tool';
+      button.innerHTML = icon;
+      button.title = t(titleKey);
+      button.setAttribute('aria-label', button.title);
+      button.addEventListener('click', () => {
+        const active = editor.ui.imageTool?.id === id && editor.ui.imageTool.mode === mode;
+        editor.setImageTool(active ? null : { id, mode });
+      });
+      tools.append(button);
+      return { mode, button };
+    });
+
+    const sizeHead = document.createElement('span');
+    sizeHead.className = 'field-label';
+    const sizeValue = document.createElement('span');
+    sizeValue.className = 'field-value';
+    sizeHead.append(t('editor.bg.brushSize'), sizeValue);
+    const size = document.createElement('input');
+    size.type = 'range';
+    size.min = String(IMAGE_BRUSH_LIMITS.min);
+    size.max = String(IMAGE_BRUSH_LIMITS.max);
+    size.setAttribute('aria-label', t('editor.bg.brushSize'));
+    size.addEventListener('input', () => {
+      editor.prefs.imageBrushSize = Number(size.value);
+      sizeValue.textContent = `${size.value} px`;
+    });
+    const sizeField = document.createElement('div');
+    sizeField.className = 'brush-size';
+    sizeField.append(sizeHead, size);
 
     const hint = document.createElement('p');
     hint.className = 'wand-hint';
-    hint.textContent = t('editor.bg.wandHint');
 
     const restore = document.createElement('button');
     restore.type = 'button';
     restore.className = 'secondary-button';
     restore.textContent = t('editor.bg.restore');
 
-    root.append(label, toleranceHead, tolerance, interiorLabel, actions, hint, restore);
+    root.append(label, toleranceHead, tolerance, interiorLabel, apply, tools, sizeField, hint, restore);
 
     /** Roda um reprocessamento mostrando "Processando…" enquanto isso. */
     const run = (patch: Parameters<typeof updateBackgroundRemoval>[2], commit: boolean) => {
@@ -342,22 +402,25 @@ export function mountPropertiesPanel(editor: Editor): void {
     apply.addEventListener('click', () => {
       run({ edges: true, interior: interior.checked, tolerance: Number(tolerance.value) }, true);
     });
-    wand.addEventListener('click', () => editor.setWand(editor.ui.wandTarget === id ? null : id));
     restore.addEventListener('click', () => {
-      editor.setWand(null);
+      editor.setImageTool(null);
       restoreOriginalImage(editor, id);
     });
 
     function render(): void {
       apply.disabled = busy > 0;
       apply.textContent = busy > 0 ? t('editor.bg.working') : t('editor.bg.apply');
-      const active = editor.ui.wandTarget === id;
-      wand.setAttribute('aria-pressed', String(active));
+      const active = editor.ui.imageTool?.id === id ? editor.ui.imageTool.mode : null;
+      for (const { mode, button } of modes) button.setAttribute('aria-pressed', String(mode === active));
+      sizeField.hidden = active !== 'erase' && active !== 'restore';
+      size.value = String(editor.prefs.imageBrushSize);
+      sizeValue.textContent = `${size.value} px`;
       hint.hidden = !active;
+      if (active) hint.textContent = t(IMAGE_TOOL_MODES.find((item) => item.mode === active)!.hintKey);
       restore.hidden = !applied();
     }
 
-    const unsubscribe = editor.onWandChange(render);
+    const unsubscribe = editor.onImageToolChange(render);
     // Desliga a escuta quando o painel for reconstruído (o campo sai do DOM).
     new MutationObserver((_, observer) => {
       if (!root.isConnected) {
@@ -511,7 +574,24 @@ export function mountPropertiesPanel(editor: Editor): void {
       );
     }
 
-    if (type !== 'text' && type !== 'image') {
+    if (type === 'path') {
+      const strokes = () => {
+        const el = doc.getElement(id);
+        return el?.type === 'path' ? el.strokes : [];
+      };
+      const setStrokes = (patch: { color?: string; width?: number }) =>
+        doc.updateElement(id, { strokes: strokes().map((stroke) => ({ ...stroke, ...patch })) });
+      list.push(
+        colorField(t('editor.brush.color'), () => strokes()[0]?.color, (color) => setStrokes({ color })),
+        numberField(t('editor.brush.size'), () => strokes()[0]?.width, (width) => setStrokes({ width }), {
+          min: BRUSH_LIMITS.min,
+          max: BRUSH_LIMITS.max,
+          unit: 'px',
+        }),
+      );
+    }
+
+    if (type !== 'text' && type !== 'image' && type !== 'path') {
       list.push(
         colorField(t('editor.props.stroke'), get('stroke'), set('stroke')),
         row(
@@ -592,6 +672,49 @@ export function mountPropertiesPanel(editor: Editor): void {
     ];
   }
 
+  /** Pincel da ferramenta Desenhar: cor (com conta-gotas), espessura e juntar traços. */
+  function brushFields(): Field[] {
+    const { brush } = editor.prefs;
+
+    const size = numberField(
+      t('editor.brush.size'),
+      () => brush.width,
+      (width) => {
+        brush.width = width;
+      },
+      { min: BRUSH_LIMITS.min, max: BRUSH_LIMITS.max, unit: 'px' },
+    );
+
+    const mergeLabel = document.createElement('label');
+    mergeLabel.className = 'checkbox-field';
+    const merge = document.createElement('input');
+    merge.type = 'checkbox';
+    merge.addEventListener('change', () => {
+      brush.merge = merge.checked;
+      // Desligar começa uma camada nova no próximo traço.
+      if (!brush.merge) editor.ui.drawingId = null;
+    });
+    mergeLabel.append(merge, t('editor.brush.merge'));
+
+    const hint = document.createElement('p');
+    hint.className = 'brush-hint';
+    hint.textContent = t('editor.brush.hint');
+
+    return [
+      heading(t('editor.brush.title')),
+      colorField(
+        t('editor.brush.color'),
+        () => brush.color,
+        (color) => {
+          brush.color = color;
+        },
+      ),
+      size,
+      { root: mergeLabel, sync: () => (merge.checked = brush.merge) },
+      { root: hint, sync() {} },
+    ];
+  }
+
   function multiFields(count: number): Field[] {
     const group = selectedGroup(editor);
     const title = group ? groupDisplayName(doc, group) : t('editor.selection.count', { count });
@@ -610,13 +733,18 @@ export function mountPropertiesPanel(editor: Editor): void {
     const selected = selectedElements(editor);
     // Inclui o nome do grupo para o título atualizar ao renomear.
     const group = selectedGroup(editor);
-    const key = selected.map((el) => `${el.id}:${el.type}:${el.groupId ?? ''}`).join(',') + (group ? groupDisplayName(doc, group) : '');
+    // Com a ferramenta Desenhar (e nada selecionado), o painel mostra o pincel.
+    const drawing = editor.tool === 'draw' && selected.length === 0;
+    const key = drawing
+      ? 'brush'
+      : selected.map((el) => `${el.id}:${el.type}:${el.groupId ?? ''}`).join(',') + (group ? groupDisplayName(doc, group) : '');
     if (force || key !== builtFor) {
       builtFor = key;
-      canvasPanel.hidden = selected.length > 0;
-      panel.hidden = selected.length === 0;
-      fields =
-        selected.length === 1
+      canvasPanel.hidden = selected.length > 0 || drawing;
+      panel.hidden = selected.length === 0 && !drawing;
+      fields = drawing
+        ? brushFields()
+        : selected.length === 1
           ? singleFields(selected[0].id, selected[0].type)
           : selected.length > 1
             ? multiFields(selected.length)
@@ -628,6 +756,7 @@ export function mountPropertiesPanel(editor: Editor): void {
 
   selection.onChange(() => render());
   doc.onChange(() => render());
+  editor.onToolChange(() => render());
   onLocaleChange(() => render(true));
   render(true);
 }

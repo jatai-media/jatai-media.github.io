@@ -1,11 +1,15 @@
 import { selectedElements, type Editor } from './editor';
 import {
+  absoluteStrokes,
+  boxFromPoints,
   createEllipse,
   createLine,
   createPath,
   createRectangle,
   createText,
-  boxFromPoints,
+  pathFromStrokes,
+  type ImageElement,
+  type PathStroke,
 } from './elements';
 import {
   elementAt,
@@ -22,7 +26,10 @@ import {
 } from './geometry';
 import { openSelectionMenu } from './context-menus';
 import { clickTarget, expandToGroups, selectedGroup } from './groups';
-import { addWandPoint } from './image-edits';
+import { sampleCanvas } from './color-picker';
+import { applyBrushStrokes } from './background-removal';
+import { addBrushStroke, addWandPoint } from './image-edits';
+import { getImage } from './images';
 import { HANDLE_HIT_RADIUS } from './renderer';
 import { collectTargets, resizeGuides, SNAP_THRESHOLD, snapMove, snapResizeEdges } from './snapping';
 import { scaleElements } from './transform';
@@ -39,8 +46,16 @@ interface Gesture {
   end(): void;
 }
 
-/** Tolerância de clique: 4 px na tela, convertidos para o documento. */
+/** Tolerância de clique: 4 px na tela (10 px no toque), convertidos para o documento. */
 const HIT_TOLERANCE = 4;
+const TOUCH_HIT_TOLERANCE = 10;
+/** Distância (px de tela) em que uma alça é "pegável" com o dedo. */
+const TOUCH_HANDLE_RADIUS = 18;
+/** Pressionar e segurar (ms) abre o menu de contexto no toque. */
+const LONG_PRESS_MS = 500;
+/** Dois toques em até esse tempo (ms) e distância (px) contam como toque duplo. */
+const DOUBLE_TAP_MS = 320;
+const DOUBLE_TAP_SLOP = 24;
 /** Arrastos menores que isso (px de tela) contam como clique. */
 const CLICK_SLOP = 4;
 
@@ -48,16 +63,20 @@ const CLICK_SLOP = 4;
  * Traduz ponteiro no canvas em operações, conforme a ferramenta ativa:
  * selecionar/mover/redimensionar, criar formas, linhas, textos e desenhos.
  */
-export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): void {
+export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): { cancelGesture(): void } {
   const { doc, viewport, selection, ui, stage } = editor;
   let gesture: Gesture | null = null;
+  /** Tipo do último ponteiro (mouse, caneta ou toque): ajusta as tolerâncias. */
+  let pointerType = 'mouse';
+  let longPress: { timer: number; screen: Point } | null = null;
+  let lastTap: { time: number; x: number; y: number } | null = null;
 
   const position = (event: MouseEvent): PointerPos => {
     const rect = stage.getBoundingClientRect();
     const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     return { screen, doc: viewport.toDocument(screen.x, screen.y) };
   };
-  const tolerance = () => HIT_TOLERANCE / viewport.zoom;
+  const tolerance = () => (pointerType === 'touch' ? TOUCH_HIT_TOLERANCE : HIT_TOLERANCE) / viewport.zoom;
 
   /** Alça da seleção atual sob o ponto (px de tela). */
   function handleAt(screen: Point): Handle | null {
@@ -67,7 +86,8 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     for (const handle of handlesFor(selected)) {
       const p = handlePoint(bounds, handle);
       const s = viewport.toScreen(p.x, p.y);
-      if (Math.abs(s.x - screen.x) <= HANDLE_HIT_RADIUS && Math.abs(s.y - screen.y) <= HANDLE_HIT_RADIUS) {
+      const radius = pointerType === 'touch' ? TOUCH_HANDLE_RADIUS : HANDLE_HIT_RADIUS;
+      if (Math.abs(s.x - screen.x) <= radius && Math.abs(s.y - screen.y) <= radius) {
         return handle;
       }
     }
@@ -255,12 +275,31 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     };
   }
 
+  /**
+   * Desenho livre com o pincel atual. Com "juntar traços" ligado, traços
+   * seguidos entram na mesma camada até trocar de ferramenta ou apertar Esc.
+   */
   function startDraw(start: PointerPos): Gesture {
-    const points = [start.doc.x, start.doc.y];
-    const el = createPath(points);
-    doc.addElements([el]);
+    const { brush } = editor.prefs;
+    const stroke: PathStroke = { points: [start.doc.x, start.doc.y], color: brush.color, width: brush.width };
+    const current = ui.drawingId ? doc.getElement(ui.drawingId) : undefined;
+    const target = brush.merge && current?.type === 'path' ? current : null;
+    // Traços anteriores da camada, em coordenadas absolutas (a caixa muda ao crescer).
+    const previous = target ? absoluteStrokes(target) : [];
+
+    let id: string;
+    if (target) {
+      id = target.id;
+      doc.updateElement(id, pathFromStrokes([...previous, stroke]));
+    } else {
+      const el = createPath(stroke);
+      id = el.id;
+      doc.addElements([el]);
+    }
+    ui.drawingId = id;
     selection.clear();
 
+    const points = [...stroke.points];
     return {
       move(pos) {
         const lastX = points[points.length - 2];
@@ -268,7 +307,7 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
         // Ignora movimentos menores que 2 px na tela (traço mais leve).
         if (Math.hypot(pos.doc.x - lastX, pos.doc.y - lastY) * viewport.zoom < 2) return;
         points.push(pos.doc.x, pos.doc.y);
-        doc.updateElement(el.id, boxFromPoints(points));
+        doc.updateElement(id, pathFromStrokes([...previous, { ...stroke, points }]));
       },
       end: () => editor.commit(),
     };
@@ -290,25 +329,142 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
     editor.editText(el.id);
   }
 
-  // ---- Varinha mágica -------------------------------------------------------
+  // ---- Ferramentas de imagem (varinha, borracha, restaurar) ---------------
 
-  /** Com a varinha ativa, clique na imagem apaga a região; fora dela, desliga a varinha. */
-  function wandClick(pos: PointerPos): boolean {
-    const el = doc.getElement(ui.wandTarget!);
+  /** Imagem da ferramenta ativa, se ainda existir. */
+  function toolImage(): Readonly<ImageElement> | undefined {
+    const el = ui.imageTool ? doc.getElement(ui.imageTool.id) : undefined;
+    return el?.type === 'image' && el.width > 0 && el.height > 0 ? el : undefined;
+  }
+
+  /** Ponto do documento → coordenadas normalizadas (0–1) na imagem. */
+  const inImage = (el: Readonly<ImageElement>, p: Point): [number, number] => [
+    (p.x - el.x) / el.width,
+    (p.y - el.y) / el.height,
+  ];
+
+  /** Raio da ponta do pincel em px do documento (o tamanho é em px da imagem). */
+  function brushRadius(el: Readonly<ImageElement>): number {
+    const natural = getImage(el.src)?.naturalWidth ?? el.width;
+    return (editor.prefs.imageBrushSize / 2) * (el.width / natural);
+  }
+
+  function updateBrushCursor(pos: PointerPos | null): void {
+    const el = toolImage();
+    const brush = ui.imageTool && ui.imageTool.mode !== 'wand';
+    const next = pos && el && brush ? { x: pos.doc.x, y: pos.doc.y, radius: brushRadius(el) } : null;
+    if (!next && !ui.brushCursor) return;
+    ui.brushCursor = next;
+    editor.requestRender();
+  }
+
+  /**
+   * Clique com uma ferramenta de imagem ativa. Dentro da imagem: varinha
+   * apaga a região; borracha/restaurar começam um traço. Fora: desliga a
+   * ferramenta e devolve undefined (o clique segue o fluxo normal).
+   */
+  function startImageTool(pos: PointerPos): Gesture | null | undefined {
+    const el = toolImage();
     const inside =
-      el?.type === 'image' &&
-      el.width > 0 &&
-      el.height > 0 &&
-      pos.doc.x >= el.x &&
-      pos.doc.x <= el.x + el.width &&
-      pos.doc.y >= el.y &&
-      pos.doc.y <= el.y + el.height;
-    if (!inside) {
-      editor.setWand(null);
-      return false;
+      el && pos.doc.x >= el.x && pos.doc.x <= el.x + el.width && pos.doc.y >= el.y && pos.doc.y <= el.y + el.height;
+    if (!el || !inside || !ui.imageTool) {
+      editor.setImageTool(null);
+      return undefined;
     }
-    void addWandPoint(editor, el.id, [(pos.doc.x - el.x) / el.width, (pos.doc.y - el.y) / el.height]);
-    return true;
+    if (ui.imageTool.mode === 'wand') {
+      void addWandPoint(editor, el.id, inImage(el, pos.doc));
+      return null;
+    }
+    return startImageBrush(el, ui.imageTool.mode, pos);
+  }
+
+  /** Traço de borracha/restaurar com prévia ao vivo; grava ao soltar. */
+  function startImageBrush(el: Readonly<ImageElement>, mode: 'erase' | 'restore', start: PointerPos): Gesture | null {
+    const current = getImage(el.src);
+    const original = getImage(el.originalSrc ?? el.src);
+    if (!current || !original) return null;
+    const width = current.naturalWidth;
+    const height = current.naturalHeight;
+    const stroke = { mode, size: editor.prefs.imageBrushSize / width, points: [...inImage(el, start.doc)] };
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    const redraw = () => {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(current, 0, 0);
+      applyBrushStrokes(ctx, original, [stroke], width, height);
+      editor.requestRender();
+    };
+    ui.imagePreview = { id: el.id, canvas };
+    redraw();
+
+    let last = start.screen;
+    return {
+      move(pos) {
+        updateBrushCursor(pos);
+        // Um ponto a cada 1,5 px de tela: traço fiel sem pontos demais.
+        if (Math.hypot(pos.screen.x - last.x, pos.screen.y - last.y) < 1.5) return;
+        last = pos.screen;
+        stroke.points.push(...inImage(el, pos.doc));
+        redraw();
+      },
+      end() {
+        // A prévia fica até o resultado final chegar (evita piscar).
+        void addBrushStroke(editor, el.id, stroke).finally(() => {
+          if (ui.imagePreview?.canvas === canvas) ui.imagePreview = null;
+          editor.requestRender();
+        });
+      },
+    };
+  }
+
+  // ---- Toque ----------------------------------------------------------------
+
+  function clearLongPress(): void {
+    if (longPress) clearTimeout(longPress.timer);
+    longPress = null;
+  }
+
+  /**
+   * Desfaz o gesto em andamento sem deixar rastro (ex.: o segundo dedo de
+   * um pinçar encostou no meio de um traço).
+   */
+  function cancelGesture(): void {
+    clearLongPress();
+    if (!gesture) return;
+    gesture = null;
+    ui.guides = [];
+    ui.marquee = null;
+    ui.imagePreview = null;
+    ui.brushCursor = null;
+    editor.history.revert();
+    editor.requestRender();
+  }
+
+  /** Duplo clique/toque: entra no grupo (seleciona só o membro) e edita texto. */
+  function openElement(pos: PointerPos): void {
+    if (editor.tool !== 'select') return;
+    const hit = elementAt(doc.elements, pos.doc, tolerance());
+    if (!hit) return;
+    if (hit.groupId) selection.set([hit.id]);
+    if (hit.type === 'text') editor.editText(hit.id);
+    editor.requestRender();
+  }
+
+  /** Menu de contexto sobre o elemento no ponto (clique direito ou segurar o dedo). */
+  function openMenuAt(pos: PointerPos, clientX: number, clientY: number): void {
+    if (editor.tool !== 'select') return;
+    const hit = elementAt(doc.elements, pos.doc, tolerance());
+    if (!hit) {
+      selection.clear();
+      return;
+    }
+    const target = clickTarget(editor, hit);
+    if (!target.every((id) => selection.has(id))) selection.set(target);
+    openSelectionMenu(editor, clientX, clientY);
   }
 
   // ---- Eventos -------------------------------------------------------------
@@ -316,11 +472,48 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
   canvas.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
+    pointerType = event.pointerType;
     // Tira o foco de campos do painel/editor de texto (isso confirma o valor digitado).
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 
     const pos = position(event);
-    if (editor.tool === 'select' && ui.wandTarget && wandClick(pos)) return;
+
+    if (pointerType === 'touch') {
+      // Toque duplo equivale ao duplo clique (nem todo navegador móvel dispara dblclick).
+      const now = performance.now();
+      const isDouble =
+        lastTap &&
+        now - lastTap.time < DOUBLE_TAP_MS &&
+        Math.hypot(pos.screen.x - lastTap.x, pos.screen.y - lastTap.y) < DOUBLE_TAP_SLOP;
+      lastTap = isDouble ? null : { time: now, x: pos.screen.x, y: pos.screen.y };
+      if (isDouble) {
+        cancelGesture();
+        openElement(pos);
+        return;
+      }
+      // Segurar o dedo parado abre o menu de contexto.
+      if (editor.tool === 'select' && !ui.imageTool) {
+        clearLongPress();
+        longPress = {
+          screen: pos.screen,
+          timer: window.setTimeout(() => {
+            longPress = null;
+            cancelGesture();
+            openMenuAt(pos, event.clientX, event.clientY);
+          }, LONG_PRESS_MS),
+        };
+      }
+    }
+    // Conta-gotas no canvas: o clique só pega a cor.
+    if (ui.colorPick) return ui.colorPick(sampleCanvas(canvas, pos.screen.x, pos.screen.y));
+    if (editor.tool === 'select' && ui.imageTool) {
+      const imageGesture = startImageTool(pos);
+      if (imageGesture !== undefined) {
+        gesture = imageGesture;
+        if (gesture) canvas.setPointerCapture(event.pointerId);
+        return;
+      }
+    }
     switch (editor.tool) {
       case 'select':
         gesture = startSelect(pos, event);
@@ -346,12 +539,18 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
 
   canvas.addEventListener('pointermove', (event) => {
     const pos = position(event);
+    if (longPress && Math.hypot(pos.screen.x - longPress.screen.x, pos.screen.y - longPress.screen.y) > 10) {
+      clearLongPress();
+    }
     if (gesture) {
       gesture.move(pos, event);
       return;
     }
-    // Fora da seleção (ou com a varinha ativa) o cursor vem do CSS e não há destaque.
-    if (editor.tool !== 'select' || ui.wandTarget) {
+    // No toque não existe "passar por cima": sem destaque nem cursor.
+    if (event.pointerType === 'touch') return;
+    // Fora da seleção (ou com ferramenta de imagem ativa) o cursor vem do CSS e não há destaque.
+    if (ui.imageTool) updateBrushCursor(pos);
+    if (editor.tool !== 'select' || ui.imageTool) {
       canvas.style.cursor = '';
       return;
     }
@@ -366,13 +565,19 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
   });
 
   const finish = () => {
+    clearLongPress();
     gesture?.end();
     gesture = null;
+    if (pointerType === 'touch' && ui.brushCursor) {
+      ui.brushCursor = null;
+      editor.requestRender();
+    }
   };
   canvas.addEventListener('pointerup', finish);
   canvas.addEventListener('pointercancel', finish);
 
   canvas.addEventListener('pointerleave', () => {
+    updateBrushCursor(null);
     if (ui.hoverIds.length) {
       ui.hoverIds = [];
       editor.requestRender();
@@ -380,26 +585,17 @@ export function bindInteractions(editor: Editor, canvas: HTMLCanvasElement): voi
   });
 
   // Clique direito: seleciona o que está sob o ponteiro (grupo inteiro, se for o caso) e abre o menu.
+  // No toque, o menu vem do "segurar o dedo" (acima).
   canvas.addEventListener('contextmenu', (event) => {
     event.preventDefault();
-    if (editor.tool !== 'select') return;
-    const hit = elementAt(doc.elements, position(event).doc, tolerance());
-    if (!hit) {
-      selection.clear();
-      return;
-    }
-    const target = clickTarget(editor, hit);
-    if (!target.every((id) => selection.has(id))) selection.set(target);
-    openSelectionMenu(editor, event.clientX, event.clientY);
+    if (pointerType === 'touch') return;
+    openMenuAt(position(event), event.clientX, event.clientY);
   });
 
   canvas.addEventListener('dblclick', (event) => {
-    if (editor.tool !== 'select') return;
-    const hit = elementAt(doc.elements, position(event).doc, tolerance());
-    if (!hit) return;
-    // Duplo clique "entra" no grupo: seleciona só o membro.
-    if (hit.groupId) selection.set([hit.id]);
-    if (hit.type === 'text') editor.editText(hit.id);
-    editor.requestRender();
+    if (pointerType === 'touch') return;
+    openElement(position(event));
   });
+
+  return { cancelGesture };
 }

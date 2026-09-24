@@ -1,4 +1,4 @@
-import { absolutePoints, type DesignElement } from './elements';
+import { absolutePoints, absoluteStrokes, type DesignElement } from './elements';
 
 export interface Point {
   x: number;
@@ -70,19 +70,22 @@ function distanceToSegment(p: Point, ax: number, ay: number, bx: number, by: num
   return Math.hypot(p.x - (ax + t * dx), p.y - (ay + t * dy));
 }
 
+function nearPolyline(p: Point, pts: readonly number[], reach: number): boolean {
+  if (pts.length === 2) return Math.hypot(p.x - pts[0], p.y - pts[1]) <= reach;
+  for (let i = 2; i < pts.length; i += 2) {
+    if (distanceToSegment(p, pts[i - 2], pts[i - 1], pts[i], pts[i + 1]) <= reach) return true;
+  }
+  return false;
+}
+
 /** O ponto (documento) acerta o elemento? `tolerance` em px do documento. */
 export function hitTest(el: DesignElement, p: Point, tolerance: number): boolean {
   switch (el.type) {
     case 'line':
-    case 'path': {
-      const pts = absolutePoints(el);
-      const reach = el.strokeWidth / 2 + tolerance;
-      if (pts.length === 2) return Math.hypot(p.x - pts[0], p.y - pts[1]) <= reach;
-      for (let i = 2; i < pts.length; i += 2) {
-        if (distanceToSegment(p, pts[i - 2], pts[i - 1], pts[i], pts[i + 1]) <= reach) return true;
-      }
-      return false;
-    }
+      return nearPolyline(p, absolutePoints(el), el.strokeWidth / 2 + tolerance);
+
+    case 'path':
+      return absoluteStrokes(el).some((stroke) => nearPolyline(p, stroke.points, stroke.width / 2 + tolerance));
 
     case 'ellipse': {
       const extra = el.strokeWidth / 2 + tolerance;

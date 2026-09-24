@@ -1,5 +1,5 @@
-export const ZOOM_LIMITS = { min: 0.02, max: 8 } as const;
-const ZOOM_STEPS = [0.05, 0.1, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8];
+export const ZOOM_LIMITS = { min: 0.02, max: 32 } as const;
+const ZOOM_STEPS = [0.05, 0.1, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32];
 
 type Listener = () => void;
 
@@ -51,10 +51,22 @@ export class Viewport {
 
   /** Enquadra um retângulo de w×h (documento) centralizado numa área de viewW×viewH (tela). */
   fit(width: number, height: number, viewWidth: number, viewHeight: number, padding = 48): void {
+    this.fitRect({ x: 0, y: 0, width, height }, viewWidth, viewHeight, padding);
+  }
+
+  /** Enquadra um retângulo qualquer do documento (ex.: a seleção). */
+  fitRect(
+    rect: { x: number; y: number; width: number; height: number },
+    viewWidth: number,
+    viewHeight: number,
+    padding = 48,
+  ): void {
+    const width = Math.max(1, rect.width);
+    const height = Math.max(1, rect.height);
     const zoom = Math.min((viewWidth - padding * 2) / width, (viewHeight - padding * 2) / height);
     this.zoom = Math.min(ZOOM_LIMITS.max, Math.max(ZOOM_LIMITS.min, zoom));
-    this.panX = (viewWidth - width * this.zoom) / 2;
-    this.panY = (viewHeight - height * this.zoom) / 2;
+    this.panX = (viewWidth - width * this.zoom) / 2 - rect.x * this.zoom;
+    this.panY = (viewHeight - height * this.zoom) / 2 - rect.y * this.zoom;
     this.emit();
   }
 

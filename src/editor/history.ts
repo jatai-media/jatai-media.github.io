@@ -42,6 +42,14 @@ export class UndoHistory {
     this.emit();
   }
 
+  /** Descarta alterações ainda não fechadas num passo (ex.: gesto cancelado no meio). */
+  revert(): void {
+    if (this.doc.version === this.version) return;
+    this.doc.restore(this.current);
+    this.version = this.doc.version;
+    this.emit();
+  }
+
   undo(): void {
     this.commit();
     const previous = this.undoStack.pop();

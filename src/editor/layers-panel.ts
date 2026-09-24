@@ -191,7 +191,7 @@ export function mountLayersPanel(editor: Editor): { rename(groupId: string): voi
         else selection.set([...selection.ids, ...ids]);
       });
       button.addEventListener('pointerdown', (event) => startDrag(event, row, button));
-      item.append(toggle, button);
+      item.append(toggle, button, grip(row));
       return item;
     }
 
@@ -217,11 +217,22 @@ export function mountLayersPanel(editor: Editor): { rename(groupId: string): voi
     });
     button.addEventListener('contextmenu', (event) => openMenu(event, [el.id]));
     button.addEventListener('pointerdown', (event) => startDrag(event, row, button));
-    item.append(button);
+    item.append(button, grip(row));
     return item;
   }
 
   // ---- Arrastar ---------------------------------------------------------------
+
+  /** Alça de arrastar para telas de toque (o CSS só a mostra com ponteiro "grosso"). */
+  function grip(row: Row): HTMLElement {
+    const handle = document.createElement('span');
+    handle.className = 'layer-grip';
+    handle.setAttribute('aria-hidden', 'true');
+    handle.innerHTML =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+    handle.addEventListener('pointerdown', (event) => startDrag(event, row, handle));
+    return handle;
+  }
 
   /**
    * O que vai junto ao arrastar a linha de um elemento. Num filho de grupo,
@@ -238,6 +249,8 @@ export function mountLayersPanel(editor: Editor): { rename(groupId: string): voi
 
   function startDrag(event: PointerEvent, row: Row, button: HTMLElement): void {
     if (event.button !== 0 || event.shiftKey) return;
+    // No toque, a linha rola a lista; só a alça (.layer-grip) arrasta.
+    if (event.pointerType === 'touch' && !button.classList.contains('layer-grip')) return;
 
     // Grupo arrasta como bloco (mantém seu grupo e não entra em outro).
     const draggedGroup = row.kind === 'group' ? row.groupId : null;

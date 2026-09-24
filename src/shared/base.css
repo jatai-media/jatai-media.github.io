@@ -184,3 +184,14 @@ input {
   background: var(--accent-2);
   color: var(--accent-text);
 }
+
+/* Em telas de toque não há teclado físico: esconde os atalhos do menu. */
+@media (pointer: coarse) {
+  .context-menu-item kbd {
+    display: none;
+  }
+
+  .context-menu-item {
+    padding: 12px 14px;
+  }
+}

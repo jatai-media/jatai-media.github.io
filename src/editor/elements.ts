@@ -46,12 +46,18 @@ export interface LineElement extends BaseElement {
   strokeWidth: number;
 }
 
+/** Um traço do pincel, com cor e espessura próprias. */
+export interface PathStroke {
+  /** [x, y, x, y, ...] — normalizados na caixa do elemento (ou absolutos, conforme o contexto). */
+  points: readonly number[];
+  color: string;
+  width: number;
+}
+
+/** Desenho livre: um ou mais traços na mesma camada. */
 export interface PathElement extends BaseElement {
   type: 'path';
-  /** [x, y, x, y, ...] normalizados na caixa. */
-  points: readonly number[];
-  stroke: string;
-  strokeWidth: number;
+  strokes: readonly PathStroke[];
 }
 
 export type TextAlign = 'left' | 'center' | 'right';
@@ -79,6 +85,7 @@ export interface ImageElement extends BaseElement {
     edges: boolean;
     interior: boolean;
     seeds: readonly (readonly [number, number])[];
+    strokes: readonly { mode: 'erase' | 'restore'; size: number; points: readonly number[] }[];
   };
 }
 
@@ -138,8 +145,30 @@ export function boxFromPoints(absolute: readonly number[]): {
 }
 
 /** Pontos normalizados → coordenadas absolutas do documento. */
-export function absolutePoints(el: Readonly<LineElement> | Readonly<PathElement>): number[] {
+export function absolutePoints(el: Readonly<LineElement>): number[] {
   return el.points.map((value, i) => (i % 2 === 0 ? el.x + value * el.width : el.y + value * el.height));
+}
+
+/** Traços com pontos absolutos → caixa que envolve todos + traços normalizados nela. */
+export function pathFromStrokes(strokes: readonly PathStroke[]): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  strokes: PathStroke[];
+} {
+  const { x, y, width, height } = boxFromPoints(strokes.flatMap((stroke) => stroke.points));
+  const normalize = (value: number, i: number) =>
+    i % 2 === 0 ? (width ? (value - x) / width : 0) : height ? (value - y) / height : 0;
+  return { x, y, width, height, strokes: strokes.map((stroke) => ({ ...stroke, points: stroke.points.map(normalize) })) };
+}
+
+/** Traços do desenho com pontos em coordenadas absolutas do documento. */
+export function absoluteStrokes(el: Readonly<PathElement>): PathStroke[] {
+  return el.strokes.map((stroke) => ({
+    ...stroke,
+    points: stroke.points.map((value, i) => (i % 2 === 0 ? el.x + value * el.width : el.y + value * el.height)),
+  }));
 }
 
 const INK = '#1a1917';
@@ -156,8 +185,9 @@ export function createLine(absolute: readonly number[]): LineElement {
   return { id: newId(), type: 'line', ...boxFromPoints(absolute), opacity: 1, stroke: INK, strokeWidth: 8 };
 }
 
-export function createPath(absolute: readonly number[]): PathElement {
-  return { id: newId(), type: 'path', ...boxFromPoints(absolute), opacity: 1, stroke: INK, strokeWidth: 6 };
+/** Desenho novo com um traço (pontos absolutos). */
+export function createPath(stroke: PathStroke): PathElement {
+  return { id: newId(), type: 'path', ...pathFromStrokes([stroke]), opacity: 1 };
 }
 
 /** Largura/altura do texto são calculadas pelo documento a partir do conteúdo. */
