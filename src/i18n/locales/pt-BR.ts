@@ -129,6 +129,11 @@ const ptBR: Messages = {
       restoreBrushHint: 'Arraste para trazer de volta partes da imagem original. Esc para terminar.',
       brushSize: 'Tamanho da ponta',
     },
+    view: {
+      fullscreen: 'Tela cheia',
+      exitFullscreen: 'Sair da tela cheia',
+      rotate: 'Girar a tela (tela cheia)',
+    },
     mobile: {
       panel: 'Propriedades e camadas',
       close: 'Fechar painel',

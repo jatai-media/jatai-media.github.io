@@ -33,6 +33,11 @@
   --artboard-shadow: #000000b0;
 }
 
+/* O atributo hidden sempre esconde, mesmo com classes que definem display. */
+[hidden] {
+  display: none !important;
+}
+
 *,
 *::before,
 *::after {

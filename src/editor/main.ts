@@ -24,6 +24,7 @@ import { SelectionModel } from './selection';
 import { bindStageControls, isTyping } from './stage-controls';
 import { createTextEditor } from './text-editor';
 import { TOOLS, type ToolId } from './tools';
+import { mountViewControls } from './view-controls';
 import { Viewport } from './viewport';
 
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
@@ -280,6 +281,7 @@ exportButton.addEventListener('click', () => {
 renderToolbar();
 mountLangSwitchers();
 mountThemeToggles();
+mountViewControls(fitView);
 applyTranslations();
 
 const updateArtboardHandles = mountArtboardHandles(editor);

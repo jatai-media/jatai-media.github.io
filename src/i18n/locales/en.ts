@@ -133,6 +133,11 @@ const en = {
       restoreBrushHint: 'Drag to bring back parts of the original image. Esc to finish.',
       brushSize: 'Brush size',
     },
+    view: {
+      fullscreen: 'Full screen',
+      exitFullscreen: 'Exit full screen',
+      rotate: 'Rotate screen (full screen)',
+    },
     mobile: {
       panel: 'Properties and layers',
       close: 'Close panel',

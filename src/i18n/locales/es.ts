@@ -129,6 +129,11 @@ const es: Messages = {
       restoreBrushHint: 'Arrastra para recuperar partes de la imagen original. Esc para terminar.',
       brushSize: 'Tamaño de la punta',
     },
+    view: {
+      fullscreen: 'Pantalla completa',
+      exitFullscreen: 'Salir de pantalla completa',
+      rotate: 'Girar la pantalla (pantalla completa)',
+    },
     mobile: {
       panel: 'Propiedades y capas',
       close: 'Cerrar panel',

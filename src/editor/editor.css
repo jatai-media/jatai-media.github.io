@@ -67,6 +67,9 @@ body {
 }
 
 .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   border-radius: 8px;
   padding: 8px 16px;
@@ -678,6 +681,22 @@ body {
   height: 24px;
 }
 
+/* Ícone do Exportar só aparece no celular (no desktop fica o texto). */
+.export-icon {
+  display: none;
+}
+
+.fullscreen-toggle[aria-pressed='true'] .icon-enter,
+.fullscreen-toggle:not([aria-pressed='true']) .icon-exit {
+  display: none;
+}
+
+/* Tela cheia não é um "ligado" de destaque: mantém o botão neutro. */
+.fullscreen-toggle[aria-pressed='true'] {
+  background: transparent;
+  color: inherit;
+}
+
 /* Botão da gaveta e alças de toque: só aparecem onde fazem sentido. */
 .panel-toggle,
 .panel-grip,
@@ -751,9 +770,21 @@ body {
     display: none;
   }
 
+  /* Em pé: Exportar vira só o ícone para caber tela cheia e girar. */
   .primary-button {
-    padding: 8px 12px;
-    font-size: 0.85rem;
+    padding: 8px 10px;
+  }
+
+  .primary-button span {
+    display: none;
+  }
+
+  .export-icon {
+    display: block;
+  }
+
+  .editor-header .icon-button {
+    width: 34px;
   }
 
   .toolbar {
@@ -834,5 +865,113 @@ body {
 
   .statusbar {
     padding: 0 8px;
+  }
+}
+
+/* ---- Celular deitado ------------------------------------------------------ */
+@media (max-height: 520px) and (orientation: landscape) {
+  .editor {
+    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-rows: 40px minmax(0, 1fr);
+    grid-template-areas:
+      'header header'
+      'toolbar stage';
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .editor-header {
+    gap: 6px;
+    padding: 0 8px;
+  }
+
+  .editor-header .icon-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .doc-title {
+    max-width: 260px;
+    padding: 4px 6px;
+  }
+
+  .primary-button {
+    padding: 5px 10px;
+  }
+
+  .primary-button span {
+    display: inline;
+  }
+
+  .export-icon {
+    display: none;
+  }
+
+  .editor-header .lang-switcher,
+  .back-link span,
+  .statusbar {
+    display: none;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 4px 0;
+    border-top: 0;
+    border-right: 1px solid var(--border);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .tool-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tool-button kbd {
+    display: none;
+  }
+
+  .panel-toggle {
+    display: grid;
+    margin: auto 0 0;
+  }
+
+  /* Painel vira gaveta lateral, entrando pela direita. */
+  .panel {
+    grid-area: stage;
+    justify-self: end;
+    align-self: stretch;
+    z-index: 5;
+    width: min(320px, 70%);
+    max-height: none;
+    border-top: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 16px 0 0 16px;
+    box-shadow: -8px 0 24px #0003;
+    transform: translateX(105%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease,
+      visibility 0.2s;
+    overscroll-behavior: contain;
+  }
+
+  .editor.panel-open .panel {
+    transform: none;
+    visibility: visible;
+  }
+
+  .panel-grip {
+    display: none;
+  }
+
+  .field select,
+  .input-unit input,
+  .color-field input[type='text'],
+  .layer-rename,
+  .doc-title {
+    font-size: 16px;
   }
 }
