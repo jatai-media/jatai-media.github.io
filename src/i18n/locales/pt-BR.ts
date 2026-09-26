@@ -21,6 +21,11 @@ const ptBR: Messages = {
         description: 'Crie posts, banners e imagens com textos, formas e fotos.',
         open: 'Abrir editor',
       },
+      video: {
+        name: 'Editor de vídeo',
+        description: 'Monte vídeos com cortes, camadas, texto e trilhas de som, e exporte em MP4.',
+        open: 'Abrir editor',
+      },
     },
   },
   editor: {

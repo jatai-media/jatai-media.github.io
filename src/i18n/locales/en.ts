@@ -25,6 +25,11 @@ const en = {
         description: 'Create posts, banners and images with text, shapes and photos.',
         open: 'Open editor',
       },
+      video: {
+        name: 'Video editor',
+        description: 'Edit videos with cuts, layers, text and soundtracks, and export to MP4.',
+        open: 'Open editor',
+      },
     },
   },
   editor: {

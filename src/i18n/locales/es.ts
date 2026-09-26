@@ -21,6 +21,11 @@ const es: Messages = {
         description: 'Crea publicaciones, banners e imágenes con textos, formas y fotos.',
         open: 'Abrir editor',
       },
+      video: {
+        name: 'Editor de video',
+        description: 'Monta videos con cortes, capas, texto y pistas de sonido, y exporta en MP4.',
+        open: 'Abrir editor',
+      },
     },
   },
   editor: {

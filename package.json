@@ -5,18 +5,27 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc -p jatai_video --noEmit && vite build",
     "preview": "vite preview",
     "watch": "vite build --watch",
     "server:build": "g++ -std=c++20 -O2 -static server.cpp -o server.exe -lws2_32",
     "server": ".\\server.exe",
     "typecheck": "tsc --noEmit",
-    "live": "vite build && concurrently -k -n build,server -c yellow,cyan \"vite build --watch\" \"npm:server\""
+    "live": "vite build && concurrently -k -n build,server -c yellow,cyan \"vite build --watch\" \"npm:server\"",
+    "video:dev": "vite --config jatai_video/vite.config.ts",
+    "video:typecheck": "tsc -p jatai_video --noEmit",
+    "video:build": "tsc -p jatai_video --noEmit && vite build --config jatai_video/vite.config.ts",
+    "video:server:build": "g++ -std=c++20 -O2 -static jatai_video/server.cpp -o jatai_video/server.exe -lws2_32",
+    "video:server": ".\\jatai_video\\server.exe 8090 jatai_video/dist",
+    "video:live": "vite build --config jatai_video/vite.config.ts && concurrently -k -n build,server -c yellow,cyan \"vite build --watch --config jatai_video/vite.config.ts\" \"npm:video:server\""
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
     "concurrently": "^10.0.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "mediabunny": "^1.60.0"
   }
 }

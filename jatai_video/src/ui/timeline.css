@@ -1,0 +1,309 @@
+/* timeline.css - a linha do tempo: regua, pistas, clipes e cursor */
+
+  /* linha do tempo */
+  .tl { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .tl-body { flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden; }
+  .tl-heads { flex: 0 0 132px; border-right: 1px solid var(--line);
+              overflow: hidden; background: var(--panel); }
+  .tl-scroll { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: auto;
+               position: relative; }
+  .tl-inner { position: relative; min-height: 100%; }
+  .ruler { height: 22px; border-bottom: 1px solid var(--line);
+           position: relative; background: var(--panel-2); cursor: pointer; }
+  .ruler .tick { position: absolute; top: 0; bottom: 0;
+                 border-left: 1px solid var(--line); }
+  .ruler .tick span { position: absolute; left: 4px; top: 3px; font-size: 10px;
+                      color: var(--dim); }
+  .ruler-pad { height: 22px; border-bottom: 1px solid var(--line);
+               background: var(--panel-2); }
+  /* Alta o bastante para caber, uma sobre a outra, a tarja do nome, os
+     quadros e a faixa de som - com 56px sobravam seis pixels de imagem. */
+  .lane { height: 78px; border-bottom: 1px solid var(--line-soft); position: relative; }
+  .lane:nth-of-type(odd) { background: #0d1016; }
+  .lane-head { height: 78px; border-bottom: 1px solid var(--line-soft);
+               display: flex; align-items: center; gap: 7px; padding: 0 9px; }
+  /* A faixa de texto e baixa: nela nao ha quadros nem onda para mostrar, so um
+     nome. Com a altura das outras, tres textos empurrariam o video para fora
+     da vista - e e o video que se esta montando. */
+  .lane.texto, .lane-head.texto { height: 26px; }
+  .lane-head.texto .nm { font-size: 11px; }
+
+  /* Onde nasce uma pista. Fica sempre a vista, discreta, porque e ela que
+     ensina o gesto: sem os botoes de criar pista, quem nunca arrastou nada
+     para ca precisa ver que o lugar existe. */
+  .lane-new { height: 30px; display: flex; align-items: center;
+              justify-content: center; color: var(--dim); font-size: 10.5px;
+              letter-spacing: .4px; border: 1px dashed var(--line);
+              border-left: 0; border-right: 0; background: #0a0d12; }
+  .lane-new.drop-lane { border-color: var(--accent); color: var(--accent);
+                        background: var(--accent-soft); }
+  /* Largar na beirada de uma pista pede uma pista NOVA ali. O risco mostra
+     exatamente onde ela vai nascer - destacar a faixa inteira diria outra
+     coisa, que o clipe vai para dentro dela. */
+  .lane.drop-edge-cima::before, .lane.drop-edge-baixo::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 3px;
+    background: var(--accent); box-shadow: 0 0 6px var(--accent); z-index: 6;
+  }
+  .lane.drop-edge-cima::before { top: 0; }
+  .lane.drop-edge-baixo::after { bottom: 0; }
+  .head-new { height: 30px; border-bottom: 1px solid var(--line-soft); }
+  .lane-head .nm { flex: 1 1 auto; min-width: 0; font-size: 12px;
+                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lane-head .kind { font-size: 9.5px; text-transform: uppercase;
+                     color: var(--dim); letter-spacing: .6px; }
+
+  /* Varrer os fragmentos desta pista. So aparece quando ha algum - e a cor e a
+     mesma do veu que os cobre, para o botao e o que ele apaga se reconhecerem
+     como a mesma coisa. */
+  .lane-x {
+    display: flex; align-items: center; gap: 4px; flex: 0 0 auto;
+    padding: 2px 6px; border-radius: 5px;
+    border: 1px solid #5c2230; background: #1a0e12; color: #ff9aa8;
+    font-size: 10px; font-variant-numeric: tabular-nums;
+  }
+  .lane-x:hover { background: #7d2b36; border-color: #a03848; color: #fff; }
+  .lane-x svg { display: block; }
+  .clip {
+    position: absolute; top: 6px; bottom: 6px; border-radius: 5px;
+    background: linear-gradient(180deg, #1e3550, #17283c);
+    border: 1px solid #2c4a6e; cursor: grab; overflow: hidden;
+    display: flex; align-items: flex-start;
+  }
+  /* Sobre a tira de quadros o nome se perderia; a tarja o segura. */
+  .clip .cl { padding: 2px 7px; font-size: 11px; color: #dbe7f5;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+              position: relative; z-index: 2; max-width: 100%;
+              background: linear-gradient(90deg, #0b1420e6, #0b1420a6 85%, #0b142000);
+              text-shadow: 0 1px 2px #000a; pointer-events: none; }
+
+  /* A tira ocupa o alto do clipe e a faixa de som fica embaixo dela - a
+     altura vem do JS, que e quem sabe quanto cada uma leva. O nome vai por
+     cima da tira. */
+  .clip .strip { position: absolute; left: 0; top: 0; width: 100%;
+                 object-fit: fill; display: block;
+                 -webkit-user-drag: none; pointer-events: none; }
+
+  /* O som ocupa a parte de baixo do clipe; o nome fica por cima. A cor sai
+     do `color` do canvas, para cada tipo de clipe pintar na sua. */
+  /* A faixa de som recebe eventos - e onde se mexe na linha de volume - e
+     mantem o ponteiro de sempre, em vez da mao de arrastar do clipe. */
+  /* Largura e posicao vem do JS: a faixa cobre so o pedaco visivel do clipe,
+     e nao ele inteiro. Sem `right`, que brigaria com as duas. */
+  .clip .wave { position: absolute; left: 0; bottom: 0; width: 100%;
+                display: block; cursor: default;
+                z-index: 1; background: #061019ee; }
+  .clip.audio { background: linear-gradient(180deg, #1d3a2c, #162c22);
+                border-color: #2a5a43; }
+  .clip.audio .cl { color: #a9d9c1; }
+  /* O texto tem cor propria - roxo, a mesma familia da voz isolada - porque
+     na linha do tempo ele nao se parece com nada: nao tem quadros nem onda,
+     so a etiqueta. */
+  .clip.texto { background: linear-gradient(180deg, #2f2244, #241a34);
+                border-color: #4a3a6b; top: 3px; bottom: 3px; align-items: center; }
+  .clip.texto .cl { padding: 1px 6px; font-size: 10.5px; background: none;
+                    text-shadow: 0 1px 2px #000c; }
+  .clip.texto .cl { color: #cbb6f0; }
+  /* As alcas ficam nas pontas, largas o bastante para a mao achar sem mirar,
+     e so acendem com o ponteiro perto: acesas o tempo todo, virariam duas
+     barras em cada texto da linha. */
+  .clip .trim { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 3;
+                cursor: ew-resize; background: transparent; }
+  .clip .trim.a { left: 0; }
+  .clip .trim.z { right: 0; }
+  .clip:hover .trim, .clip.on .trim { background: #2c4a6ecc; }
+  .clip.texto:hover .trim, .clip.texto.on .trim { background: #6b53a0; }
+  .clip.audio:hover .trim, .clip.audio.on .trim { background: #2a5a43; }
+  .clip .trim:hover { background: var(--accent); }
+  .clip.trimming { outline: 1.5px solid var(--accent); outline-offset: -1px; }
+
+  .clip.imagem { background: linear-gradient(180deg, #3a2d1c, #2c2216);
+                 border-color: #5c4620; }
+  .clip.imagem .cl { color: #e3c88a; }
+  /* ================================================== o bloco fundido
+     As pecas continuam sendo pecas por dentro - os pulos que a edicao tirou
+     seguem la - mas na tela o bloco e uma peca so: as costuras internas somem,
+     e so as pontas ficam arredondadas. */
+  .clip.blk { border-radius: 0; border-left: 0; border-right: 0; }
+  .clip.blk.blk-a { border-top-left-radius: 5px; border-bottom-left-radius: 5px;
+                    border-left: 1px solid #2c4a6e; }
+  .clip.blk.blk-z { border-top-right-radius: 5px; border-bottom-right-radius: 5px;
+                    border-right: 1px solid #2c4a6e; }
+  .clip.blk.audio.blk-a, .clip.blk.audio.blk-z { border-color: #2a5a43; }
+  .clip.blk.imagem.blk-a, .clip.blk.imagem.blk-z { border-color: #5c4620; }
+  /* Uma marca discreta em cada costura: o bloco e um so, mas quem cortou tem o
+     direito de ver onde ficaram os cortes. */
+  .clip.blk:not(.blk-a)::before {
+    content: ""; position: absolute; left: 0; top: 6px; bottom: 6px;
+    width: 1px; background: #ffffff22; z-index: 4; pointer-events: none;
+  }
+
+  .clip.on { outline: 1.5px solid var(--accent); outline-offset: -1px; }
+  /* ======================================== fora da montagem
+     O clipe mandado para baixo nao some: fica no mesmo instante, uma pista
+     abaixo, sob um veu vermelho. E o vermelho que diz que ele nao conta - sem
+     ele, dois clipes iguais em pistas diferentes nao se distinguiriam. */
+  .clip.off { border-color: #7d2b36; }
+  .clip.off .strip, .clip.off .wave { opacity: .38; }
+  .clip.off .cl { color: #edaab2;
+                  background: linear-gradient(90deg, #200b0fe6, #200b0fa6 85%, #200b0f00); }
+  /* O veu por cima de tudo - menos da setinha, que fica acima dele: e por ela
+     que o clipe volta, e um botao ofuscado nao se oferece. */
+  .clip.off::after { content: ""; position: absolute; inset: 0; z-index: 3;
+                     background: #b52d3b3d; pointer-events: none; }
+
+  /* A guia na ponta do descartado: a boca do buraco de onde ele saiu - e para
+     onde ele volta. A setinha aponta para cima, que e onde fica a montagem.
+     Rosa, e nao ambar: ambar e a cor da agulha, e duas marcas verticais da
+     mesma cor na linha do tempo seriam a mesma marca. */
+  .clip.off .seam { position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+                    background: #ff9aa8; z-index: 4; }
+  .clip.off .seam::before {
+    content: ""; position: absolute; top: 0; left: 0;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-bottom: 6px solid #ff9aa8;
+  }
+
+  /* A setinha da triagem, no canto do clipe. Verde nas duas direcoes: verde
+     e a cor do que se pode fazer, e o que muda entre uma e outra e para onde
+     ela aponta. */
+  .clip-toss {
+    position: absolute; top: 3px; right: 3px; z-index: 4;
+    width: 17px; height: 17px; padding: 0; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid #235c3c; border-radius: 4px;
+    background: #0b1a11ee; color: #5ad68d;
+    box-shadow: 0 1px 3px #000a;
+  }
+  /* No clipe escolhido ela fica sempre a vista; nos outros, so quando o
+     ponteiro passa por cima - assim o gesto esta sempre a um movimento de
+     distancia sem encher a linha de setinhas. */
+  .clip:not(.on):not(:hover) .clip-toss:not(.back) { opacity: 0; }
+  .clip-toss { transition: opacity .12s; }
+  .clip-toss:hover { background: #12291b; border-color: #3c8f5c; color: #8cf0b4; }
+  .clip-toss:active { transform: translateY(1px); }
+  .clip-toss svg { display: block; }
+
+  /* As pausas sondadas, acesas sobre o clipe. Verde-agua e nao vermelho: aqui
+     elas ainda sao uma proposta, e vermelho e a cor do que ja foi descartado -
+     duas coisas diferentes nao podem ter a mesma cor na mesma tela. */
+  /* ============================ os pontos de animacao do enquadramento
+     Uma faixa fina no alto do clipe, com um losango por ponto. Ela so nasce
+     quando ha pontos ou quando o clipe esta escolhido - acesa em todo clipe,
+     roubaria a beirada de cima da linha do tempo inteira.
+
+     Na faixa de um clipe que nao esta escolhido so os losangos recebem
+     eventos: pegar qualquer clipe pela beirada de cima continua arrastando o
+     clipe, e nao abrindo uma faixa que ninguem pediu. Escolhido o clipe, a
+     faixa inteira responde - e e ai que o botao direito insere pontos. */
+  .clip .kf-lane { position: absolute; left: 0; right: 0; top: 0; height: 13px;
+                   z-index: 4; pointer-events: none;
+                   background: linear-gradient(180deg, #0a1018dd, #0a101800); }
+  /* Escolhido o clipe, a faixa se anuncia: uma linha acesa no pe dela diz onde
+     os pontos moram, e sem isso ninguem descobre que a faixa existe. */
+  .clip.on .kf-lane { pointer-events: auto;
+                      border-bottom: 1px solid #7fe6ff44; }
+  .clip.on.imagem .kf-lane { border-bottom-color: #eed49a55; }
+  /* O que se pega e uma caixa larga e invisivel; o losango e so o desenho
+     dentro dela. Um alvo de sete pixels e menor do que a mao acerta sem mirar,
+     e era por isso que arrastar um ponto parecia nao existir. */
+  .clip .kf {
+    position: absolute; top: 0; width: 17px; height: 13px; margin-left: -8.5px;
+    pointer-events: auto; cursor: ew-resize; background: none; border: 0;
+  }
+  .clip .kf::before {
+    content: ""; position: absolute; left: 5px; top: 3px;
+    width: 7px; height: 7px; transform: rotate(45deg);
+    background: #7fe6ff; border: 1px solid #06202c;
+  }
+  /* O ponto suave e oco: de longe se ve onde o movimento entra e sai devagar
+     sem precisar abrir o painel. */
+  .clip .kf.suave::before { background: #0a1018; border-color: #7fe6ff; }
+  .clip .kf.on::before { background: var(--accent); border-color: #2b1c00;
+                         box-shadow: 0 0 0 2px #f0b42955; }
+  .clip.imagem .kf::before { background: #eed49a; }
+  .clip.imagem .kf.suave::before { background: #1a1409; border-color: #eed49a; }
+
+  /* O instante do ponto enquanto ele e arrastado. Nasce e morre com o gesto:
+     acesa o tempo todo, a etiqueta taparia os vizinhos. */
+  .clip .kf-tip {
+    position: absolute; top: 14px; transform: translateX(-50%);
+    padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 600;
+    font-variant-numeric: tabular-nums; white-space: nowrap; z-index: 5;
+    background: #0a1018ee; border: 1px solid #7fe6ff66; color: #d8f4ff;
+    pointer-events: none;
+  }
+
+  .clip .gap { position: absolute; top: 0; bottom: 0; z-index: 3;
+               background: #21d4a83d; border-left: 1px solid #21d4a8;
+               border-right: 1px solid #21d4a8; pointer-events: none; }
+
+  /* ================================== os controles do corte nos silencios */
+  .hush {
+    position: fixed; z-index: 400; width: 310px;
+    background: var(--panel); border: 1px solid #2b3547; border-radius: 10px;
+    box-shadow: 0 14px 40px #000a; padding: 11px 12px;
+  }
+  .hush-title { font-size: 12px; color: var(--muted); margin-bottom: 9px; }
+  .hush-row { display: grid; grid-template-columns: 96px 1fr 48px;
+              align-items: center; gap: 8px; margin-bottom: 7px; cursor: pointer; }
+  .hush-k { font-size: 11.5px; color: var(--muted); }
+  .hush-v { font-size: 11.5px; text-align: right;
+            font-variant-numeric: tabular-nums; color: var(--text); }
+  .hush-row input[type=range] { width: 100%; accent-color: var(--accent); }
+  /* A contagem e o que torna os numeros acima legiveis: e por ela que se
+     ajusta, e nao pelos decibeis. */
+  .hush-count { margin: 9px 0 10px; padding: 6px 8px; border-radius: 6px;
+                background: var(--panel-2); color: #21d4a8; font-size: 12px;
+                text-align: center; font-variant-numeric: tabular-nums; }
+  .hush-foot { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .playhead { position: absolute; top: 0; bottom: 0; width: 1px;
+              background: var(--accent); pointer-events: none; z-index: 5; }
+  .playhead::before { content: ""; position: absolute; top: 0; left: -5px;
+                      border-left: 6px solid transparent;
+                      border-right: 6px solid transparent;
+                      border-top: 7px solid var(--accent); }
+  .drop-lane { outline: 1.5px dashed var(--accent-dim); outline-offset: -3px; }
+
+  /* A caixa de selecao. Nao recebe ponteiro: ela e desenho, e o gesto por
+     baixo dela continua sendo o arrasto que a criou. */
+  .band { position: absolute; z-index: 6; pointer-events: none;
+          border: 1px solid var(--accent);
+          background: var(--accent-soft); opacity: .75; }
+
+  /* ==================================================== arrastando um clipe
+     Ele sai do plano das pistas e passa a flutuar: e a mao que o leva, e ele
+     tem de poder cruzar a fronteira da pista sem ficar cortado nela. */
+  .clip.dragging {
+    z-index: 8; cursor: grabbing; opacity: .92;
+    box-shadow: 0 8px 22px #000c; border-color: var(--accent);
+  }
+  /* As pecas que abrem espaco deslizam em vez de pular: e o deslize que conta
+     que elas estao cedendo lugar, e nao que o desenho se refez. */
+  .clip { transition: left .12s ease-out; }
+  .clip.dragging { transition: none; }
+
+  /* Onde o descartado vai se encaixar, com a mao ainda apertada. */
+  .seat-mark { position: absolute; top: 22px; bottom: 0; width: 2px;
+               background: #ff9aa8; z-index: 7; pointer-events: none;
+               box-shadow: 0 0 7px #ff9aa8cc; }
+
+  /* ================================================== ferramentas da barra
+     Quadrados, e nao botoes com texto: sao um modo ligado, e um desenho se
+     reconhece de relance melhor do que uma palavra que se le toda vez. */
+  .btn.tool {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; color: var(--muted);
+  }
+  .btn.tool svg { display: block; }
+  .btn.tool:hover { color: var(--text); }
+  .btn.tool.on { background: var(--accent-soft); border-color: var(--accent-dim);
+                 color: var(--accent); }
+
+  /* O ponteiro da tesoura e um fio vertical, na cor do cursor: ele mostra
+     onde o corte cai, que e a unica coisa que se precisa saber ao cortar. A
+     ponta quente fica no meio do fio. */
+  .tl-inner.razor .clip,
+  .tl-inner.razor .clip .wave {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='26'><rect x='6' y='0' width='4' height='26' fill='black' opacity='.85'/><rect x='7' y='0' width='2' height='26' fill='%23f0b429'/></svg>") 8 13, crosshair;
+  }

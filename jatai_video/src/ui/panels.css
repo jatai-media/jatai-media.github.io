@@ -1,0 +1,413 @@
+/* panels.css - conteudo dos paineis: midia, galerias, reprodutor, propriedades */
+
+  /* ================================================ conteudo dos paineis */
+  .empty {
+    height: 100%; display: flex; flex-direction: column; gap: 8px;
+    align-items: center; justify-content: center; color: var(--dim);
+    text-align: center; padding: 20px;
+  }
+  .empty b { color: var(--muted); font-weight: 600; }
+  .hint { font-size: 11.5px; }
+  /* Quebra linha em vez de espremer. O painel da midia ocupa 22% da largura:
+     sem isto o terceiro botao era empurrado para fora da vista, e quem
+     procurasse por ele concluiria, com razao, que ele nao existe. */
+  .bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 7px 9px;
+    border-bottom: 1px solid var(--line-soft); flex: 0 0 auto;
+  }
+  .fill-col { display: flex; flex-direction: column; height: 100%;
+              min-height: 0; overflow: hidden; }
+  .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+  /* A area que recebe arquivos largados do Explorador. Ela so acende quando ha
+     um arrasto em curso - fora disso, uma moldura tracejada permanente seria
+     ruido pedindo uma coisa que ninguem pediu. */
+  .drop-zone { position: relative; }
+  .drop-zone.on { outline: 2px dashed var(--accent); outline-offset: -6px;
+                  background: var(--accent-soft); }
+  .drop-zone.on::after {
+    content: "Solte para importar";
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    background: #11141aee; border: 1px solid var(--accent-dim);
+    color: var(--accent); border-radius: 8px; padding: 8px 14px;
+    font-size: 12.5px; white-space: nowrap; pointer-events: none;
+  }
+
+  /* ============================================ o painel de atalhos
+     Uma lista de gestos e as teclas deles. A tecla e um botao porque e nela
+     que se clica para trocar - e um rotulo nao convidaria a isso. */
+  .keys {
+    position: fixed; z-index: 400; width: 330px;
+    background: var(--panel); border: 1px solid #2b3547; border-radius: 10px;
+    box-shadow: 0 14px 40px #000a; padding: 11px 12px;
+  }
+  .keys-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .keys-list { max-height: 60vh; overflow: auto; }
+  .keys-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+  .keys-nome { flex: 1 1 auto; font-size: 12px; }
+  .keys-tecla {
+    flex: 0 0 auto; min-width: 96px; padding: 3px 8px;
+    border: 1px solid var(--line); border-radius: 5px; background: var(--panel-2);
+    font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text);
+  }
+  .keys-tecla:hover { border-color: var(--accent-dim); color: var(--accent); }
+  /* Esperando a tecla: o botao pisca para dizer que o teclado agora e dele. */
+  .keys-tecla.waiting { border-color: var(--accent); background: var(--accent-soft);
+                        color: var(--accent); animation: keys-wait 1s infinite; }
+  .keys-tecla.empty { color: var(--dim); font-style: italic; }
+  @keyframes keys-wait { 50% { opacity: .55; } }
+  .keys-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px;
+               padding-top: 9px; border-top: 1px solid var(--line); }
+  .keys-hint { flex: 1 1 auto; font-size: 11px; color: var(--dim); }
+
+  /* Quem esta respondendo pelas pausas. Uma linha so, porque muda o
+     significado do controle logo abaixo dela. */
+  .hush-modo { font-size: 10.5px; color: var(--dim); margin: -4px 0 8px;
+               letter-spacing: .2px; }
+
+  /* midia */
+  .media-grid { display: grid; gap: 8px; padding: 10px;
+                grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); }
+  .card {
+    position: relative;
+    border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+    background: var(--panel-2); cursor: grab;
+  }
+  .card:hover { border-color: #2b3547; }
+
+  /* O x de tirar do projeto. So aparece com o ponteiro em cima ou no cartao
+     escolhido: um x fixo em cada miniatura viraria ruido numa cesta cheia, e
+     o gesto que ele oferece e o unico da cesta que nao se desfaz. */
+  .card-x {
+    position: absolute; top: 4px; right: 4px; z-index: 3;
+    width: 19px; height: 19px; padding: 0; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid #4a2029; border-radius: 5px;
+    background: #1a0e12ee; color: #ff9aa8; font-size: 11px;
+    opacity: 0; transition: opacity .12s, background .12s;
+  }
+  .card:hover .card-x, .card.on .card-x { opacity: 1; }
+  .card-x:hover { background: #7d2b36; color: #fff; border-color: #a03848; }
+  .card.on { border-color: var(--accent); }
+  .thumb { aspect-ratio: 16/9; background: #0c0f14; display: flex;
+           align-items: center; justify-content: center; color: var(--dim);
+           font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+           overflow: hidden; }
+  /* A miniatura preenche a caixa; o rotulo com a extensao fica no lugar dela
+     ate o quadro chegar, ou para sempre, se o item nao tiver imagem. */
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block;
+               -webkit-user-drag: none; user-select: none; }
+  .thumb img[hidden] { display: none; }
+  .card.bad { border-color: #5c2230; }
+
+  /* Um selo no canto de quem ja teve a voz separada: sao minutos de trabalho,
+     e nada mais na lista diria que ele ja foi feito. Roxo, a mesma cor com que
+     a voz e desenhada na linha do tempo. */
+  .card.hasvoice .thumb::after {
+    content: "voz"; position: absolute; left: 5px; bottom: 5px;
+    background: #2a1636e6; border: 1px solid #6b3f8c; color: #d9a9f0;
+    border-radius: 4px; padding: 1px 5px; font-size: 9px;
+    text-transform: uppercase; letter-spacing: .6px;
+  }
+  .card .thumb { position: relative; }
+  .card.bad .thumb span { color: #ff8a9a; }
+  .card .name { padding: 5px 7px; font-size: 11.5px; white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .card.on .name { color: var(--text); }
+  .card .meta { padding: 0 7px 6px; font-size: 10px; color: var(--dim);
+                display: flex; justify-content: space-between; gap: 6px; }
+
+  /* galerias simples (efeitos, texto, audio) */
+  .tile-grid { display: grid; gap: 8px; padding: 10px;
+               grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 14px 8px;
+          background: var(--panel-2); text-align: center; font-size: 11.5px;
+          color: var(--muted); cursor: default; }
+  .tile:hover { border-color: #2b3547; color: var(--text); }
+  /* Os modelos de texto fazem alguma coisa quando clicados, ao contrario das
+     galerias de enfeite; o ponteiro precisa dizer isso antes do clique. */
+  .tile.acao { cursor: pointer; }
+  .tile.acao:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+  /* reprodutor: a area de visao, dentro da barra de transporte */
+  .canvasbar { display: flex; align-items: center; gap: 6px; min-width: 0;
+               flex: 0 1 auto; }
+  /* A lista de tamanhos prontos e o que cede espaco quando o painel aperta;
+     os campos tem largura fixa, porque um numero cortado nao se le. */
+  .canvasbar select { flex: 0 1 190px; min-width: 74px;
+                      background: #0e1117; color: var(--text);
+                      border: 1px solid var(--line); border-radius: 6px;
+                      padding: 5px 6px; font: inherit; font-size: 12px; }
+  .canvasbar select:focus { outline: none; border-color: var(--accent-dim); }
+  .cv-size { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .cv-size input[type=number] {
+    width: 58px; background: #0e1117; color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px;
+    font: inherit; font-size: 12.5px; font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .cv-size input[type=number]:focus { outline: none; border-color: var(--accent-dim); }
+  .cv-size .x { color: var(--dim); font-size: 11px; }
+  .cv-size .unit { color: var(--dim); font-size: 11.5px; }
+  .cv-ratio { color: var(--accent); font-size: 11.5px; flex: 0 0 auto;
+              font-variant-numeric: tabular-nums; }
+  .canvasbar .cv-flip { padding: 5px 8px; font-size: 12px; flex: 0 0 auto; }
+
+  /* reprodutor */
+  .stage { flex: 1 1 auto; min-height: 0; display: flex; align-items: center;
+           justify-content: center; background: #06080b; padding: 12px; }
+  /* A largura e a altura vem do JavaScript, em pixels, para caber na area de
+     visao escolhida - o `aspect-ratio` daqui so vale enquanto a primeira conta
+     nao chega, para a caixa nao nascer achatada. */
+  .screen { aspect-ratio: 16/9; max-width: 100%; max-height: 100%; width: 100%;
+            flex: 0 0 auto;
+            background: #000; border: 1px solid var(--line); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--dim); font-size: 12px; text-align: center;
+            overflow: hidden; position: relative; }
+  /* A pilha de camadas de video. Cada <img> cobre a tela inteira e o quadro se
+     encaixa dentro dela (contain); assim o centro do quadro e o centro da area
+     de visao, que e de onde saem todas as contas do enquadramento. A ordem no
+     DOM e a ordem da pilha: o ultimo fica na frente. */
+  .vid-layer { position: absolute; inset: 0; pointer-events: none; }
+  .vid-layer img { position: absolute; inset: 0; width: 100%; height: 100%;
+                   object-fit: contain; display: block;
+                   transform-origin: 50% 50%; -webkit-user-drag: none; }
+  .vid-layer img[hidden] { display: none; }
+  .screen-msg { padding: 12px; }
+
+  /* A moldura da imagem escolhida. Leva a mesma transformacao do <img>, entao
+     gira e cresce junto com ele - nao ha conta de geometria repetida aqui.
+
+     O quadro em si nao recebe cliques: arrastar dentro dele continua sendo
+     arrastar a imagem. So as alcas e que pegam o ponteiro. */
+  .im-sel { position: absolute; pointer-events: none;
+            outline: 1px dashed var(--accent); outline-offset: 0;
+            transform-origin: 50% 50%; }
+  .im-grip { position: absolute; width: 12px; height: 12px; border-radius: 3px;
+             background: var(--accent); border: 1px solid #00000066;
+             pointer-events: auto; }
+  /* O cursor de cada canto e posto pelo script, girado junto com a imagem:
+     numa imagem a 45 graus, a seta fixa apontava para o lado errado. */
+  .im-grip.nw { left: -6px; top: -6px; }
+  .im-grip.ne { right: -6px; top: -6px; }
+  .im-grip.sw { left: -6px; bottom: -6px; }
+  .im-grip.se { right: -6px; bottom: -6px; }
+  /* A alca de girar fica acima da borda, presa por uma haste: colada num
+     canto, ela disputaria o mesmo pixel com o gesto de redimensionar. */
+  .im-haste { position: absolute; left: 50%; top: -22px; width: 1px;
+              height: 22px; margin-left: -.5px; background: var(--accent);
+              opacity: .7; }
+  .im-girar { position: absolute; left: 50%; top: -30px; width: 13px;
+              height: 13px; margin-left: -6.5px; border-radius: 50%;
+              background: var(--accent); border: 1px solid #00000066;
+              pointer-events: auto; cursor: grab; }
+  .im-girar:active { cursor: grabbing; }
+  /* Um anel, e nao um disco: no meio da imagem, uma bolota cheia tapa
+     justamente o que se esta tentando enquadrar. */
+  .im-mover { position: absolute; left: 50%; top: 50%; width: 22px;
+              height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+              border: 2px solid var(--accent); background: rgba(10,12,16,.35);
+              box-shadow: 0 0 0 1px #00000055; pointer-events: auto;
+              cursor: move; }
+  .im-mover:hover { background: rgba(240,180,41,.22); }
+
+  /* A imagem se arrasta para enquadrar; a mao diz isso antes do gesto. */
+  .screen { cursor: grab; }
+  .screen.grabbing { cursor: grabbing; }
+  /* A tela acesa como alvo: um modelo de texto pode ser largado direto nela, e
+     o lugar onde ele cair e o lugar onde ele vai aparecer. */
+  .screen.drop-tela { outline: 2px dashed var(--accent); outline-offset: -3px; }
+
+  /* ---- o texto sobre o video -------------------------------------------
+     A camada cobre a tela inteira, mas nao atende ao ponteiro: quem atende
+     sao as caixas de texto. Sem isto, a camada roubaria todo clique que hoje
+     e da tela. */
+  .tx-layer { position: absolute; inset: 0; overflow: hidden;
+              pointer-events: none; }
+  /* Cada caixa e ancorada pelo proprio centro: e o centro que se guarda no
+     clipe, e assim o texto nao escorrega ao mudar de tamanho. */
+  /* Sem quebra automatica: a linha quebra onde quem escreveu apertou Enter, e
+     em lugar nenhum mais. Uma quebra que o programa inventa muda o
+     enquadramento do texto sem ninguem ter pedido. */
+  .tx { position: absolute; transform: translate(-50%, -50%);
+        pointer-events: auto; cursor: move; text-align: center;
+        line-height: 1.15; white-space: pre;
+        display: flex; align-items: center; justify-content: center;
+        font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+        border-radius: 3px; user-select: none; -webkit-user-select: none; }
+  .tx.on { outline: 1px dashed var(--accent); outline-offset: 3px; }
+  .tx.moving { outline-style: solid; }
+  .tx.editando { cursor: text; outline: 1px solid var(--accent); }
+  .tx.editando .tx-txt { outline: none; user-select: text;
+                         -webkit-user-select: text; cursor: text; }
+  /* As alcas da caixa: direita, baixo e canto. Sao da caixa, e nao da letra -
+     o corpo da fonte vem do campo Tamanho, no painel. */
+  .tx-grip { position: absolute; width: 11px; height: 11px; border-radius: 3px;
+             background: var(--accent); border: 1px solid #00000066; }
+  .tx-grip.e { right: -6px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+  .tx-grip.s { bottom: -6px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+  .tx-grip.se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+  /* Com a area de visao aqui dentro, a barra pode nao caber num painel
+     estreito: quebrar linha e melhor do que espremer os campos ate o numero
+     sumir. Num painel de largura normal nada disso acontece. */
+  .transport { display: flex; align-items: center; gap: 10px; row-gap: 8px;
+               flex-wrap: wrap; padding: 8px 12px;
+               border-top: 1px solid var(--line-soft); flex: 0 0 auto; }
+  .iconbtn { width: 30px; height: 30px; border-radius: 6px; padding: 0;
+             background: var(--panel-2); border: 1px solid var(--line);
+             display: flex; align-items: center; justify-content: center; }
+  .iconbtn:hover { background: #1c2230; }
+  .iconbtn.main { background: var(--accent); border-color: var(--accent);
+                  color: #1a1204; }
+  /* Medidor de saida: estreito, so para dizer que ha sinal e onde ele esta. */
+  .meter { width: 110px; height: 6px; border-radius: 3px; background: #0c0f14;
+           border: 1px solid var(--line); overflow: hidden; flex: 0 0 auto; }
+  .meter i { display: block; height: 100%; width: 0;
+             background: linear-gradient(90deg, #3aa06a, #cdd14a);
+             transition: width .12s linear; }
+  .meter i.hot { background: #e0455e; }
+
+  .time { font-size: 12px; color: var(--muted); }
+  .time b { color: var(--text); font-weight: 600; }
+
+  /* painel de audio */
+  .audio-panel { padding: 0 0 14px; }
+  .audio-panel .a-name { padding: 0 12px 4px; font-size: 12.5px;
+                         white-space: nowrap; overflow: hidden;
+                         text-overflow: ellipsis; }
+  .audio-panel .a-env { padding: 0 12px 2px; font-size: 12px; color: var(--muted); }
+  .audio-panel .a-point { padding: 2px 12px 8px; font-size: 11.5px;
+                         color: var(--accent); font-variant-numeric: tabular-nums; }
+  .audio-panel .a-sub { padding: 0 12px 6px; font-size: 11px; color: var(--dim);
+                       font-variant-numeric: tabular-nums; }
+  .a-vol { display: flex; align-items: center; gap: 12px; padding: 4px 12px 8px; }
+  /* O controle precisa de curso para ser util: ocupa a largura do painel. */
+  .a-vol input[type=range] {
+    flex: 1 1 auto; min-width: 90px; height: 22px; margin: 0;
+    -webkit-appearance: none; appearance: none; background: transparent;
+  }
+  .a-vol input[type=range]::-webkit-slider-runnable-track {
+    height: 4px; border-radius: 2px; background: var(--line);
+  }
+  .a-vol input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+    background: var(--accent); border: 1px solid #00000055;
+  }
+  .a-vol input[type=range]:focus { outline: none; }
+  .a-vol input[type=range]:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .a-num { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+  .a-num input[type=number] {
+    width: 62px; background: #0e1117; color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px;
+    font: inherit; font-size: 12.5px; font-variant-numeric: tabular-nums;
+  }
+  .a-num input[type=number]:focus { outline: none; border-color: var(--accent-dim); }
+  .a-num .unit { color: var(--dim); font-size: 11.5px; }
+  /* O painel costuma ser estreito: os botoes quebram linha em vez de criar
+     uma barra de rolagem horizontal. */
+  .a-foot { display: flex; align-items: center; gap: 6px; padding: 0 12px;
+            flex-wrap: wrap; }
+  .a-foot .btn { padding: 5px 8px; }
+  .a-foot .hint { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* painel de imagem: o enquadramento */
+  .tf-panel { padding: 0 0 10px; }
+  .tf-panel .tf-nome { padding: 0 12px 6px; font-size: 12.5px;
+                       white-space: nowrap; overflow: hidden;
+                       text-overflow: ellipsis; color: var(--text); }
+  /* Quando o cursor esta longe do clipe escolhido, o ajuste vale mas nao se
+     ve. Dizer isso e o que evita a conclusao de que o controle nao funciona. */
+  .tf-panel .tf-aviso { margin: 0 12px 8px; padding: 6px 8px; border-radius: 6px;
+                        background: var(--accent-soft); color: var(--accent);
+                        border: 1px solid var(--accent-dim); font-size: 11px; }
+  .tf-panel .tf-dica { padding: 4px 12px 0; color: var(--dim); }
+  /* O botao do quarto de volta e um simbolo so: quadrado, do tamanho do campo
+     ao lado, para a linha nao ficar com um degrau. */
+  .tf-panel .tf-quarto { flex: 0 0 auto; width: 28px; padding: 5px 0;
+                         text-align: center; font-size: 14px; line-height: 1; }
+  .tf-panel .a-foot { padding-top: 4px; }
+
+  /* painel de texto */
+  .tx-panel { padding: 0 0 10px; }
+  .tx-area { display: block; width: calc(100% - 24px); margin: 0 12px 8px;
+             background: #0e1117; color: var(--text); border-radius: 6px;
+             border: 1px solid var(--line); padding: 7px 8px; font: inherit;
+             font-size: 12.5px; resize: vertical; min-height: 48px;
+             user-select: text; -webkit-user-select: text; }
+  .tx-area:focus { outline: none; border-color: var(--accent-dim); }
+  .tx-row { display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px;
+            flex-wrap: wrap; }
+  .tx-row label { color: var(--dim); font-size: 11.5px; flex: 0 0 auto; }
+  .tx-row .btn { padding: 5px 8px; font-size: 12px; }
+  .tx-row input[type=range] { flex: 1 1 80px; min-width: 70px; height: 22px;
+                              margin: 0; accent-color: var(--accent); }
+  .tx-row input[type=color] { width: 30px; height: 26px; padding: 0;
+                              background: #0e1117; border: 1px solid var(--line);
+                              border-radius: 6px; flex: 0 0 auto; }
+  .tx-num { color: var(--muted); font-size: 11.5px; flex: 0 0 auto;
+            min-width: 34px; text-align: right; }
+
+  /* painel do narrador */
+  .nar-voz { flex: 1 1 140px; min-width: 100px; background: #0e1117;
+             color: var(--text); border: 1px solid var(--line);
+             border-radius: 6px; padding: 5px 6px; font: inherit;
+             font-size: 12px; }
+  .nar-voz:focus { outline: none; border-color: var(--accent-dim); }
+  /* Quadrado, do tamanho do campo ao lado, para a linha nao ganhar um degrau. */
+  .nar-recarrega { flex: 0 0 auto; width: 28px; padding: 5px 0;
+                   text-align: center; font-size: 14px; line-height: 1; }
+  .tf-panel .hint { padding: 0 12px 6px; color: var(--dim); }
+  /* O recado de falta - sem voz instalada, sem tabela de idioma - fica ao lado
+     do botao, e nao num toast: e uma condicao que dura, e nao um aviso que
+     passa. */
+  .nar-aviso { color: var(--warn, #e0a33e); font-size: 11.5px; flex: 1 1 auto; }
+  /* A previa: o tocador e o botao de enviar, separados do resto por uma linha
+     - o que esta acima dela se escreve, o que esta abaixo ja e som. */
+  .nar-previa { border-top: 1px solid var(--line); margin: 6px 12px 0;
+                padding-top: 8px; }
+  .nar-previa audio { width: 100%; height: 30px; display: block; }
+  .nar-previa .a-foot { padding: 6px 0 0; }
+
+  /* efeitos: o unico que faz alguma coisa fica num bloco proprio, acima da
+     galeria do que ainda vem. A separacao e o recado: o de cima funciona. */
+  .ef-caixa { border: 1px solid var(--line); border-radius: 8px;
+              background: var(--panel-2); padding: 12px; margin: 10px; }
+  .ef-titulo { font-size: 12.5px; color: var(--text); margin-bottom: 6px; }
+  .ef-titulo.ef-porvir { color: var(--muted); font-size: 11.5px;
+                         margin: 14px 10px 0; }
+  .ef-texto { font-size: 11.5px; color: var(--muted); line-height: 1.5;
+              margin-bottom: 10px; }
+  .ef-caixa .btn { width: 100%; }
+  /* A receita do texto atras so aparece com o efeito ligado, que e quando ela
+     passa a fazer sentido - e ai ela e instrucao, nao enfeite. */
+  .ef-dica { margin-top: 10px; padding-top: 9px;
+             border-top: 1px solid var(--line-soft);
+             font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  .ef-ajustes { margin: 0 10px 10px; padding: 11px 12px;
+                border: 1px solid var(--line); border-radius: 8px;
+                background: var(--panel-2); }
+  .ef-linha { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+  .ef-linha label { font-size: 11.5px; color: var(--muted);
+                    flex: 0 0 116px; }
+  .ef-linha input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
+  /* Largura fixa e numero tabular: sem isso o controle inteiro balanca para os
+     lados enquanto a mao arrasta, porque "5%" e "100%" nao medem o mesmo. */
+  .ef-val { flex: 0 0 42px; text-align: right; font-size: 11px;
+            color: var(--text); font-variant-numeric: tabular-nums; }
+  .ef-ajustes .ef-dica { margin-top: 2px; }
+
+  /* propriedades */
+  .prop { display: flex; justify-content: space-between; gap: 12px;
+          padding: 7px 12px; border-bottom: 1px solid var(--line-soft);
+          font-size: 12px; }
+  .prop .k { color: var(--dim); flex: 0 0 auto; }
+  .prop .v { color: var(--text); text-align: right; overflow: hidden;
+             text-overflow: ellipsis; white-space: nowrap; }
+  .section { color: var(--dim); font-size: 10px; text-transform: uppercase;
+             letter-spacing: .9px; padding: 12px 12px 6px; }

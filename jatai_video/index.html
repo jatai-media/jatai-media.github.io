@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jat.ai - editor de videos</title>
+<link rel="icon" type="image/png" href="/logo_jatai.png">
+<script type="module" src="./src/main.ts"></script>
+</head>
+<body>
+
+<div id="inicio">
+  <div class="ini-topo">
+    <img class="ini-marca" alt="jat.ai - editor de videos" src="/logo_jatai.png">
+    <button class="btn primary ini-novo" id="inicioCriar">Novo trabalho</button>
+  </div>
+  <div class="ini-grade" id="inicioGrade"></div>
+</div>
+
+<header class="toolbar">
+  <div class="brand"><img alt="" src="/logo_jatai.png"><span class="nome">jat<i>.ai</i></span></div>
+  <button class="btn" id="btnMenu">Menu<i class="caret"></i></button>
+  <div class="sep"></div>
+  <span class="titulo-projeto" id="tituloProjeto"></span>
+  <div class="spacer"></div>
+  <span class="time mono" id="topTime">00:00.0</span>
+</header>
+
+<main class="dock" id="dock"></main>
+
+<footer class="status">
+  <span id="stMedia">0 itens</span>
+  <span id="stTracks">0 pistas</span>
+  <div class="spacer"></div>
+  <span id="stHint">Arraste as abas para reorganizar os paineis</span>
+</footer>
+
+<div id="toast"></div>
+</body>
+</html>
