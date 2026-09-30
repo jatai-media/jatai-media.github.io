@@ -1,0 +1,13 @@
+{
+  "nome": "Marca d'agua",
+  "descricao": "Um logo num canto do video. Troque o logo.png desta pasta pelo seu.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 10,
+  "parado": true,
+  "params": [
+    { "id": "canto",     "tipo": "escolha", "rotulo": "Canto", "opcoes": ["cima direita", "cima esquerda", "baixo direita", "baixo esquerda"], "padrao": "cima direita" },
+    { "id": "tamanho",   "tipo": "numero",  "rotulo": "Tamanho", "min": 3, "max": 40, "padrao": 12, "unidade": "% da largura" },
+    { "id": "opacidade", "tipo": "numero",  "rotulo": "Opacidade", "min": 5, "max": 100, "padrao": 70, "unidade": "%" }
+  ]
+}

@@ -1,0 +1,62 @@
+import iliv
+
+#janela com callbacks: setas movem o quadrado, clique cria circulos, Esc fecha
+
+global const int LARGURA = 800
+global const int ALTURA = 600
+global const double VELOCIDADE = 300.0
+
+global double x = 380.0
+global double y = 280.0
+global int[] circulos_x = []
+global int[] circulos_y = []
+global string ultima_tecla = "nenhuma"
+global int quadros = 0
+
+void desenhar()
+    quadros = quadros + 1
+    double passo = VELOCIDADE * iliv.delta()
+    if iliv.key_down("left")
+        x = x - passo
+    if iliv.key_down("right")
+        x = x + passo
+    if iliv.key_down("up")
+        y = y - passo
+    if iliv.key_down("down")
+        y = y + passo
+
+    iliv.clear(iliv.rgb(18, 18, 28))
+    for i in range(len(circulos_x))
+        iliv.circle(circulos_x[i], circulos_y[i], 18, iliv.rgb(80, 160, 255))
+    iliv.rect(int(x), int(y), 40, 40, iliv.rgb(245, 184, 0))
+    iliv.line(iliv.mouse_x() - 10, iliv.mouse_y(), iliv.mouse_x() + 10, iliv.mouse_y(), iliv.rgb(255, 80, 80))
+    iliv.line(iliv.mouse_x(), iliv.mouse_y() - 10, iliv.mouse_x(), iliv.mouse_y() + 10, iliv.rgb(255, 80, 80))
+
+    int total = len(circulos_x)
+    iliv.text(16, 12, "setas: mover   clique: circulo   Esc: sair", iliv.rgb(200, 200, 210))
+    iliv.text(16, 36, "circulos: {total}   ultima tecla: {ultima_tecla}", iliv.rgb(255, 255, 255))
+
+void tecla(string nome)
+    ultima_tecla = nome
+    if nome == "escape"
+        iliv.close()
+
+void clique(int cx, int cy)
+    circulos_x.append(cx)
+    circulos_y.append(cy)
+
+iliv.open(LARGURA, ALTURA, "Jatai + iliv")
+iliv.on_draw(desenhar)
+iliv.on_key(tecla)
+iliv.on_click(clique)
+
+#callback sem tipo: fn recebe o tipo da assinatura que iliv.on_mouse_move espera (void(int, int))
+global movimentos = 0
+fn mexeu(mx, my)
+    movimentos = movimentos + 1
+iliv.on_mouse_move(mexeu)
+
+iliv.run()
+
+int total = len(circulos_x)
+println("janela fechada: {quadros} quadros, {total} circulos, {movimentos} movimentos do mouse")

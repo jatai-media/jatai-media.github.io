@@ -17,11 +17,17 @@
 
 import {
   AudioBufferSink, AudioBufferSource, BufferTarget, CanvasSource, Mp4OutputFormat, Output,
-  QUALITY_HIGH, QUALITY_MEDIUM, QUALITY_VERY_HIGH, StreamTarget,
+  QUALITY_HIGH, QUALITY_MEDIUM, QUALITY_VERY_HIGH, StreamTarget, canEncodeVideo,
   getFirstEncodableAudioCodec, getFirstEncodableVideoCodec, type Quality, type Target,
 } from 'mediabunny';
 import { cesta, mensagem } from './midia';
 import { LeitorQuadros } from './quadros';
+import { quadroParaExportar, type PluginExport } from '../plugins/plugins';
+import type { Caixa } from '../plugins/sandbox';
+import { desenhaTexto, type TextoExport } from './texto-canvas';
+
+// O que vai no fim dos argumentos: um plugin, ou um texto da linha do tempo.
+type Desenho = PluginExport | { tipo: 'texto'; texto: TextoExport };
 
 interface Chave { t: number; esc: number; x: number; y: number; rot: number; suave: boolean }
 interface Transformacao { esc: number; x: number; y: number; rot: number }
@@ -135,7 +141,11 @@ function le(args: unknown[]) {
     if (!(s.vel > 0.01)) s.vel = 1;
     if (s.len > 0) sons.push(s);
   }
-  return { w, h, fps, crf, duracao, camadas, sons };
+  // Depois do som, o que os plugins precisam (ver exportCamadas): uma camada
+  // com midia -k e o plugin k da lista.
+  const extra = args[args.length - 1] as { plugins?: Desenho[] } | undefined;
+  const plugins = extra && typeof extra === 'object' && Array.isArray(extra.plugins) ? extra.plugins : [];
+  return { w, h, fps, crf, duracao, camadas, sons, plugins };
 }
 
 // O CRF do x264 virou qualidade do WebCodecs. Os tres valores que a pagina
@@ -147,46 +157,119 @@ function qualidade(crf: number): Quality {
 }
 
 // ------------------------------------------------------------ o som
+//
+// A mistura sai EM TRECHOS, e nao inteira. Misturar o video todo de uma vez
+// era decodificar e guardar na memoria o som inteiro antes do primeiro quadro:
+// num video de 13 minutos, centenas de MB e minutos com a barra parada em 0% -
+// parecia travado, e as vezes travava mesmo. Agora cada trecho de alguns
+// segundos e misturado quando a imagem chega perto dele, e vai direto para o
+// codificador; a memoria fica do tamanho de um trecho.
 
-// A mistura inteira, pronta, numa AudioBuffer. Os trechos sao os mesmos da
-// reproducao, com o mesmo ganho e a mesma velocidade.
-async function mistura(sons: Som[], duracao: number): Promise<AudioBuffer> {
-  const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil(duracao * TAXA)), TAXA);
+const TRECHO = 10;   // segundos de som por vez
+
+interface Bloco { buffer: AudioBuffer; timestamp: number; duration: number }
+
+// Um trecho de som sendo lido do arquivo, de uma janela para a outra.
+//
+// O decodificador e UM SO do comeco ao fim do trecho, e nao um por janela: o
+// AAC (e o MP3, e o Opus) decodifica cada quadro com a ajuda do anterior, e um
+// decodificador aberto no meio do arquivo erra o primeiro quadro. Abrindo um
+// por janela, cada emenda de 10 s virava um estalo. O bloco que atravessa a
+// emenda fica guardado (`resto`) e a janela seguinte comeca por ele.
+class LeitorSom {
+  private it: AsyncGenerator<Bloco, void, unknown> | null = null;
+  private resto: Bloco | null = null;
+  constructor(private s: Som, private e: { audio?: any }) {}
+
+  // Agenda em `ctx` a parte do arquivo [ini, fim), comecando no instante
+  // `quando` da janela.
+  async agenda(ctx: OfflineAudioContext, destino: AudioNode, ini: number, fim: number, quando: number) {
+    if (!this.it) this.it = new AudioBufferSink(this.e.audio).buffers(ini, this.s.in + this.s.len * this.s.vel);
+    for (;;) {
+      let wb = this.resto;
+      this.resto = null;
+      if (!wb) {
+        const r = await this.it.next();
+        if (r.done) return;
+        wb = r.value as Bloco;
+      }
+      const fimB = wb.timestamp + wb.duration;
+      const x = Math.max(wb.timestamp, ini), y = Math.min(fimB, fim);
+      if (y > x) {
+        const f = ctx.createBufferSource();
+        f.buffer = wb.buffer;
+        f.playbackRate.value = this.s.vel;
+        f.connect(destino);
+        f.start(quando + (x - ini) / this.s.vel, x - wb.timestamp, y - x);
+      }
+      if (fimB > fim) { this.resto = wb; return; }
+    }
+  }
+
+  async fecha() {
+    const it = this.it;
+    this.it = null;
+    this.resto = null;
+    if (it) await it.return(undefined).catch(() => {});
+  }
+}
+
+// O trecho [de, ate) da mistura, ja cortado em -1..1. Os trechos de som sao os
+// mesmos da reproducao, com o mesmo ganho e a mesma velocidade.
+async function misturaTrecho(sons: Som[], leitores: Map<Som, LeitorSom>,
+                             de: number, ate: number): Promise<AudioBuffer | null> {
+  const n = Math.floor(ate * TAXA) - Math.floor(de * TAXA);
+  if (n <= 0) return null;
+  const ctx = new OfflineAudioContext(2, n, TAXA);
   for (const s of sons) {
     if (cancelar) break;
+    const a = Math.max(de, s.start), b = Math.min(ate, s.start + s.len);
+    if (b <= a) continue;
     const e = cesta.find(s.media);
     if (!e || !e.audio) continue;
     const ganho = ctx.createGain();
     ganho.gain.value = Math.max(0, s.ganho);
     ganho.connect(ctx.destination);
 
-    const ini = s.in, fim = s.in + s.len * s.vel;
-    for await (const wb of new AudioBufferSink(e.audio).buffers(ini, fim)) {
-      const a = Math.max(wb.timestamp, ini), b = Math.min(wb.timestamp + wb.duration, fim);
-      if (b <= a) continue;
-      const f = ctx.createBufferSource();
-      f.buffer = wb.buffer;
-      f.playbackRate.value = s.vel;
-      f.connect(ganho);
-      f.start(s.start + (a - ini) / s.vel, a - wb.timestamp, b - a);
-    }
+    let l = leitores.get(s);
+    if (!l) { l = new LeitorSom(s, e); leitores.set(s, l); }
+    // A parte do ARQUIVO que toca nesta janela.
+    await l.agenda(ctx, ganho, s.in + (a - s.start) * s.vel, s.in + (b - s.start) * s.vel, a - de);
+    // Trecho que acaba nesta janela: o decodificador dele ja pode sair.
+    if (s.start + s.len <= ate) { await l.fecha(); leitores.delete(s); }
   }
-  return ctx.startRendering();
+  const buf = await ctx.startRendering();
+  // Somar trilhas estoura; o corte e o mesmo que a placa faz ao tocar.
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let k = 0; k < d.length; k++) d[k] = d[k] > 1 ? 1 : d[k] < -1 ? -1 : d[k];
+  }
+  return buf;
 }
 
-// Um pedaco da mistura, como AudioBuffer proprio - o codificador recebe o som
-// aos poucos, junto com a imagem.
-function fatia(buf: AudioBuffer, de: number, ate: number): AudioBuffer | null {
-  const a = Math.max(0, Math.floor(de * TAXA)), b = Math.min(buf.length, Math.floor(ate * TAXA));
-  if (b <= a) return null;
-  const out = new AudioBuffer({ numberOfChannels: 2, length: b - a, sampleRate: TAXA });
-  for (let c = 0; c < 2; c++) {
-    const src = buf.getChannelData(c).subarray(a, b);
-    // Somar trilhas estoura; o corte e o mesmo que a placa faz ao tocar.
-    const dst = out.getChannelData(c);
-    for (let i = 0; i < src.length; i++) dst[i] = src[i] > 1 ? 1 : src[i] < -1 ? -1 : src[i];
-  }
-  return out;
+// ------------------------------------------------------------ o tempo gasto
+//
+// Quanto cada etapa custou, somado. Vai no aviso do fim e no console: e o que
+// diz onde vale a pena acelerar (decodificar, desenhar, plugins, som ou
+// codificar), em vez de adivinhar.
+type Etapa = 'decodificar' | 'desenhar' | 'plugins' | 'som' | 'codificar';
+function cronometro() {
+  const soma: Record<Etapa, number> = { decodificar: 0, desenhar: 0, plugins: 0, som: 0, codificar: 0 };
+  const inicio = performance.now();
+  return {
+    async mede<T>(etapa: Etapa, faz: () => Promise<T> | T): Promise<T> {
+      const t0 = performance.now();
+      try { return await faz(); } finally { soma[etapa] += performance.now() - t0; }
+    },
+    soma(etapa: Etapa, ms: number) { soma[etapa] += ms; },
+    resumo(quadros: number) {
+      const total = (performance.now() - inicio) / 1000;
+      const partes = (Object.keys(soma) as Etapa[]).filter((k) => soma[k] > 1)
+        .map((k) => k + " " + (soma[k] / 1000).toFixed(1) + " s");
+      return { total, texto: total.toFixed(1) + " s para " + quadros + " quadros (" +
+                             (quadros / Math.max(0.001, total)).toFixed(0) + " por segundo): " + partes.join(", ") };
+    },
+  };
 }
 
 // ------------------------------------------------------------ exportar
@@ -232,7 +315,14 @@ export async function exportar(...args: unknown[]) {
     const tela = new OffscreenCanvas(aj.w, aj.h);
     const ctx = tela.getContext('2d', { alpha: false })!;
     ctx.imageSmoothingQuality = 'high';
-    const video = new CanvasSource(tela, { codec: vcodec, bitrate: qualidade(aj.crf) });
+    // O codificador da placa de video (VCN nas Radeon, Quick Sync nas Intel,
+    // NVENC nas NVIDIA), quando existe. E so uma preferencia, e por isso vai
+    // perguntada antes: pedida numa maquina sem ela, a codificacao falharia em
+    // vez de cair no processador.
+    const naPlaca = await canEncodeVideo(vcodec, { width: aj.w, height: aj.h, bitrate: qualidade(aj.crf),
+                                                   hardwareAcceleration: 'prefer-hardware' }).catch(() => false);
+    const video = new CanvasSource(tela, { codec: vcodec, bitrate: qualidade(aj.crf),
+                                           hardwareAcceleration: naPlaca ? 'prefer-hardware' : 'no-preference' });
     output.addVideoTrack(video, { frameRate: aj.fps });
 
     let audio: AudioBufferSource | null = null;
@@ -241,9 +331,7 @@ export async function exportar(...args: unknown[]) {
       output.addAudioTrack(audio);
     }
     await output.start();
-
-    // O som primeiro, inteiro: sao segundos de trabalho para minutos de video.
-    const som = audio ? await mistura(aj.sons, aj.duracao) : null;
+    const relogio = cronometro();
 
     for (const c of aj.camadas) {
       const e = cesta.find(c.media);
@@ -254,17 +342,137 @@ export async function exportar(...args: unknown[]) {
     const total = Math.ceil(aj.duracao * aj.fps);
     const aCada = Math.max(1, Math.floor(aj.fps / 4));
     let somAte = 0;
+    const leitoresSom = new Map<Som, LeitorSom>();
+
+    // O proximo trecho de som, quando a imagem chega perto de onde o som parou:
+    // os dois andam juntos, e o MP4 sai intercalado.
+    const empurraSom = async (ate: number) => {
+      while (audio && somAte < ate && somAte < aj.duracao && !cancelar) {
+        const de = somAte, fim = Math.min(aj.duracao, de + TRECHO);
+        const pedaco = await relogio.mede('som', () => misturaTrecho(aj.sons, leitoresSom, de, fim));
+        if (pedaco) await relogio.mede('som', () => audio!.add(pedaco));
+        somAte = fim;
+      }
+    };
+
+    // A tela separada: onde vai sozinha a camada que um filtro de camada vai
+    // receber (o chroma key recebe so o video de fundo verde, e nao a montagem).
+    let sepTela: OffscreenCanvas | null = null;
+    const separada = () => {
+      if (!sepTela) sepTela = new OffscreenCanvas(aj.w, aj.h);
+      const g = sepTela.getContext('2d')!;
+      g.imageSmoothingQuality = 'high';
+      return g;
+    };
+    const limpaSeparada = () => {
+      const g = separada();
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, aj.w, aj.h);
+    };
+    const ehFiltroDeCamada = (c: Camada) => {
+      if (c.media >= 0) return false;
+      const d = aj.plugins[-c.media - 1] as PluginExport | undefined;
+      return !!d && !('tipo' in d) && !!d.filtro && !!d.camada;
+    };
+
+    // Um plugin "parado" (marca d'agua, moldura) desenha a mesma coisa em todo
+    // quadro: o desenho e feito uma vez e reaproveitado.
+    const parados = new Map<number, { bmp: ImageBitmap; caixa: Caixa | null }>();
 
     for (let n = 0; n < total; n++) {
       if (cancelar) break;
       const t = n / aj.fps;
+      await empurraSom(t + 1);
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, aj.w, aj.h);
 
-      for (const c of aj.camadas) {
-        if (t < c.start || t >= c.start + c.len) continue;
+      // As camadas deste instante, de baixo para cima. Uma camada logo abaixo
+      // de um FILTRO DE CAMADA nao vai para a tela: vai sozinha para a
+      // separada, que e a entrada daquele filtro (ver ehFiltroDeCamada).
+      const ativas = aj.camadas.filter((c) => t >= c.start && t < c.start + c.len);
+      for (let ci = 0; ci < ativas.length; ci++) {
+        const c = ativas[ci];
+        const desvia = ci + 1 < ativas.length && ehFiltroDeCamada(ativas[ci + 1]);
+        const g = desvia ? separada() : ctx;
+        // a separada comeca vazia para cada camada desviada (o filtro de
+        // camada limpa a dele depois de ler)
+        if (desvia && !ehFiltroDeCamada(c)) limpaSeparada();
+
+        // Plugin: ele desenha o quadro inteiro, ja na medida do video. O
+        // enquadramento vai por cima com a conta da previa: deslocamento, e
+        // giro e zoom em torno do centro da area que ele desenhou.
+        if (c.media < 0) {
+          const k = -c.media - 1;
+          const dd = aj.plugins[k];
+          if (!dd) continue;
+          // Texto: desenhado aqui mesmo, com as contas da folha de estilo da previa.
+          if ('tipo' in dd && dd.tipo === 'texto') {
+            const t0 = performance.now();
+            desenhaTexto(g, dd.texto, aj.w, aj.h);
+            relogio.soma('desenhar', performance.now() - t0);
+            continue;
+          }
+          const d = dd as PluginExport;
+          // Filtro: recebe o quadro como esta ate aqui (tudo o que ficou
+          // abaixo dele) e o devolve alterado, no lugar.
+          // Filtro de CAMADA (chroma key...): a entrada e so a camada logo
+          // abaixo, que foi desenhada sozinha na separada; a saida, com
+          // transparencia, vai POR CIMA do que ja esta na tela.
+          if (d.filtro && d.camada) {
+            const r = await relogio.mede('plugins', async () => {
+              const entrada = await createImageBitmap(separada().canvas);
+              limpaSeparada();
+              return quadroParaExportar(d, t - c.start, aj.w, aj.h, false, entrada);
+            });
+            if (r) {
+              g.save();
+              g.setTransform(1, 0, 0, 1, 0, 0);
+              g.drawImage(r.bmp, 0, 0);
+              g.restore();
+              r.bmp.close();
+            }
+            continue;
+          }
+          if (d.filtro) {
+            const r = await relogio.mede('plugins', async () => {
+              const entrada = await createImageBitmap(tela);
+              return quadroParaExportar(d, t - c.start, aj.w, aj.h, false, entrada);
+            });
+            if (r) {
+              g.save();
+              g.setTransform(1, 0, 0, 1, 0, 0);
+              g.globalCompositeOperation = 'copy';
+              g.drawImage(r.bmp, 0, 0);
+              g.restore();
+              r.bmp.close();
+            }
+            continue;
+          }
+          let q = d.parado ? parados.get(k) : null;
+          if (!q) {
+            // A area desenhada so importa se o plugin gira ou muda de tamanho:
+            // e o centro disso. Medi-la e ler o quadro inteiro de volta da
+            // placa, entao so se mede quando serve para alguma coisa.
+            const medir = [c as Transformacao, ...c.anim].some((p) => Math.abs(p.esc - 1) > 1e-4 || Math.abs(p.rot) > 1e-4);
+            q = await relogio.mede('plugins', () => quadroParaExportar(d, t - c.start, aj.w, aj.h, medir));
+            if (!q) continue;
+            if (d.parado) parados.set(k, q);
+          }
+          const tr = em(c.anim, c, t - c.start);
+          const esc = tr.esc > 1e-6 ? tr.esc : 1e-6;
+          const cx = q.caixa ? (q.caixa.x + q.caixa.w / 2) * aj.w : aj.w / 2;
+          const cy = q.caixa ? (q.caixa.y + q.caixa.h / 2) * aj.h : aj.h / 2;
+          g.setTransform(1, 0, 0, 1, 0, 0);
+          g.translate(cx + tr.x * aj.w, cy + tr.y * aj.h);
+          g.rotate(tr.rot * Math.PI / 180);
+          g.scale(esc, esc);
+          g.drawImage(q.bmp, -cx, -cy);
+          if (!d.parado) q.bmp.close();
+          continue;
+        }
+
         const e = cesta.find(c.media);
         if (!e) continue;
 
@@ -277,7 +485,7 @@ export async function exportar(...args: unknown[]) {
         if (e.imagem) {
           fonte = e.imagem; sw = e.imagem.width; sh = e.imagem.height;
         } else {
-          amostra = await leitores.get(c.media)?.quadro(dentro);
+          amostra = await relogio.mede('decodificar', () => leitores.get(c.media)?.quadro(dentro)) ?? null;
           if (!amostra) continue;
           sw = amostra.displayWidth; sh = amostra.displayHeight;
         }
@@ -285,10 +493,10 @@ export async function exportar(...args: unknown[]) {
         const enc = encaixa(sw, sh, aj.w, aj.h);
         const tr = em(c.anim, c, t - c.start);
         const esc = tr.esc > 1e-6 ? tr.esc : 1e-6;
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.translate(aj.w / 2 + tr.x * aj.w, aj.h / 2 + tr.y * aj.h);
-        ctx.rotate(tr.rot * Math.PI / 180);
-        ctx.scale(esc, esc);
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.translate(aj.w / 2 + tr.x * aj.w, aj.h / 2 + tr.y * aj.h);
+        g.rotate(tr.rot * Math.PI / 180);
+        g.scale(esc, esc);
         const dx = enc.x - aj.w / 2, dy = enc.y - aj.h / 2;
         if (!fonte && amostra!.rotation) {
           // Video de celular gravado de lado: so `drawWithFit` respeita a
@@ -299,22 +507,20 @@ export async function exportar(...args: unknown[]) {
           amostra!.drawWithFit(giro.getContext('2d')!, { fit: 'fill' });
           fonte = giro;
         }
-        if (fonte) ctx.drawImage(fonte, dx, dy, enc.w, enc.h);
-        else amostra!.draw(ctx, dx, dy, enc.w, enc.h);
+        const t0 = performance.now();
+        if (fonte) g.drawImage(fonte, dx, dy, enc.w, enc.h);
+        else amostra!.draw(g, dx, dy, enc.w, enc.h);
+        relogio.soma('desenhar', performance.now() - t0);
       }
 
-      await video.add(t, 1 / aj.fps);
-
-      // O som vai junto, um segundo de cada vez, para o MP4 sair intercalado.
-      if (audio && som && (t + 1 / aj.fps >= somAte || n === total - 1)) {
-        const ate = n === total - 1 ? aj.duracao : somAte + 1;
-        const pedaco = fatia(som, somAte, ate);
-        if (pedaco) await audio.add(pedaco);
-        somAte = ate;
-      }
+      await relogio.mede('codificar', () => video.add(t, 1 / aj.fps));
 
       if (n % aCada === 0) progresso(t, aj.duracao);
     }
+    // O fim do som que ainda faltava.
+    await empurraSom(aj.duracao);
+    for (const l of leitoresSom.values()) await l.fecha();
+    for (const q of parados.values()) q.bmp.close();
 
     if (cancelar) {
       await output.cancel();
@@ -323,7 +529,9 @@ export async function exportar(...args: unknown[]) {
       return { ok: false, cancelado: true };
     }
 
-    await output.finalize();
+    await relogio.mede('codificar', () => output!.finalize());
+    const tempo = relogio.resumo(total);
+    console.info('[exportar] ' + tempo.texto);
 
     if (buffer?.buffer) {
       const url = URL.createObjectURL(new Blob([buffer.buffer], { type: 'video/mp4' }));
@@ -336,8 +544,9 @@ export async function exportar(...args: unknown[]) {
 
     const nomes: Record<string, string> = { avc: 'H.264', hevc: 'HEVC', vp9: 'VP9', av1: 'AV1' };
     return { ok: true, arquivo: destino.alca ? destino.nome : destino.nome + ' (pasta de downloads)',
-             motor: 'API de video do navegador, ' + (nomes[vcodec] || vcodec) +
-                    (acodec ? ' e ' + acodec.toUpperCase() : '') };
+             motor: (naPlaca ? 'placa de video' : 'processador') + ', ' + (nomes[vcodec] || vcodec) +
+                    (acodec ? ' e ' + acodec.toUpperCase() : ''),
+             tempo: tempo.texto };
   } catch (e) {
     if (output && output.state !== 'finalized') await output.cancel().catch(() => {});
     return { ok: false, error: 'a exportacao falhou: ' + mensagem(e) };

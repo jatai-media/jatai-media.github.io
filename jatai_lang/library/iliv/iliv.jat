@@ -1,0 +1,53 @@
+#biblioteca iliv: janela com desenho 2D e eventos (Windows)
+#uso: import iliv
+#
+#   void desenhar()
+#       iliv.clear(iliv.rgb(20, 20, 30))
+#       iliv.rect(100, 100, 50, 50, iliv.rgb(245, 184, 0))
+#
+#   iliv.open(640, 480, "Minha janela")
+#   iliv.on_draw(desenhar)
+#   iliv.run()
+
+#cria a janela (largura e altura da area de desenho, em pixels)
+extern void open(int largura, int altura, string titulo)
+
+#laco da janela: processa eventos e chama on_draw ~60 vezes por segundo, ate a janela fechar
+extern void run()
+
+#fecha a janela (run() termina)
+extern void close()
+
+#callbacks
+#chamado a cada quadro, para desenhar
+extern void on_draw(void() desenhar)
+#tecla pressionada: "a".."z", "0".."9", "left", "right", "up", "down", "space", "enter", "escape"...
+extern void on_key(void(string) tecla)
+#clique do botao esquerdo em (x, y)
+extern void on_click(void(int, int) clique)
+#mouse movido para (x, y)
+extern void on_mouse_move(void(int, int) movimento)
+
+#cor a partir de vermelho, verde e azul (0 a 255)
+extern int rgb(int r, int g, int b)
+
+#desenho (use dentro de on_draw)
+extern void clear(int cor)
+extern void rect(int x, int y, int largura, int altura, int cor)
+extern void circle(int x, int y, int raio, int cor)
+extern void line(int x1, int y1, int x2, int y2, int cor)
+extern void text(int x, int y, string texto, int cor)
+
+#estado
+extern int width()
+extern int height()
+extern int mouse_x()
+extern int mouse_y()
+extern bool mouse_down()
+extern bool key_down(string tecla)
+
+#segundos desde o quadro anterior (para animacao independente da velocidade)
+extern double delta()
+
+#salva o quadro atual como imagem BMP
+extern void screenshot(string caminho)

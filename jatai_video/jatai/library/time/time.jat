@@ -1,0 +1,30 @@
+#biblioteca time (versao do editor de video): o relogio do script e o tempo do VIDEO
+#uso: import time
+#
+#Os nomes sao os mesmos do time do Jatai no computador, mas aqui nada espera de
+#verdade: sleep avanca o relogio do video, e cada mudanca feita depois dele
+#(editor.zoom, editor.move...) vale naquele instante do video. Entre dois
+#instantes o editor anima sozinho, suavemente.
+#
+#   editor.zoom("foto", 100)
+#   time.sleep(3.0)
+#   editor.zoom("foto", 180)    #3 segundos depois: a foto se aproxima devagar
+#
+#O relogio comeca em 0 (o inicio do video) a cada vez que o script roda.
+
+#instante atual do relogio, em segundos de video
+extern double now()
+
+#avanca o relogio (aceita fracao: 0.5 = meio segundo)
+extern void sleep(double segundos)
+
+#pula o relogio para um instante do video (ex.: time.at(editor.cursor()))
+extern void at(double segundos)
+
+#segundos passados desde inicio (um valor devolvido por now())
+double elapsed(double inicio)
+    return now() - inicio
+
+#milissegundos passados desde inicio
+double elapsed_ms(double inicio)
+    return (now() - inicio) * 1000.0

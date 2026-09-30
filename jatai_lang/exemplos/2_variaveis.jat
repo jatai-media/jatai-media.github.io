@@ -1,0 +1,35 @@
+#comentario
+
+#o tipo e deduzido do valor: nao precisa escreve-lo
+
+notaA = 8.0
+notaB = 7.5
+soma = notaA + notaB
+media = soma / 2.0
+println("a nota final é: {media}")
+
+numero_1 = 10
+numero_2 = 5
+soma_inteira = numero_1 + numero_2
+println("A soma dos números é: {soma_inteira}")
+
+primeiro_nome = "Ana"
+sobrenome = "Silva"
+nome_completo = primeiro_nome + " " + sobrenome
+println("O usuário cadastrado é: {nome_completo}")
+
+status_conceito = 'A'
+println("O conceito final do aluno é: {status_conceito}")
+
+ativo = false
+println("status {ativo}")
+
+#o tipo fica fixo depois de criada: numero_1 = "dez" seria erro
+numero_1 = numero_1 * 2
+println("numero_1 dobrado: {numero_1}")
+
+#o tipo tambem pode ser escrito, quando voce quiser deixar explicito
+int idade = 30
+double altura = 1.75
+string cidade = "Jataí"
+println("{idade} anos, {altura} m, mora em {cidade}")

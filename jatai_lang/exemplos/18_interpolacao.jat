@@ -1,0 +1,44 @@
+import text
+
+#interpolacao: qualquer expressao entre chaves, "{...}"
+
+int dobro(int x)
+    return x * 2
+
+global int senha = 0
+int proxima()
+    senha = senha + 1
+    return senha
+
+int a = 7
+double preco = 2.5
+string nome = "joao paulo"
+int[] notas = [8, 6, 10]
+
+#contas, chamadas, arrays e comparacoes
+println("a + 3 = {a + 3}, dobro = {dobro(a)}, total = {double(a) * preco}")
+println("notas: {len(notas)}, a ultima e {notas[len(notas) - 1]}")
+println("a passou? {a >= 7} / reprovou? {not (a >= 7)}")
+
+#funcoes de bibliotecas e strings dentro da interpolacao
+println("ola, {text.name(nome)}! seu nome tem {len(nome)} letras")
+println("grito: {text.upper("cuidado com o {nome}")}")
+
+#as partes sao calculadas da esquerda para a direita
+println("senhas: {proxima()}, {proxima()}, {proxima()}")
+
+#tambem fora do print, e em """...""" com {{ }}
+string resumo = "{text.upper(nome)} tirou {notas[0] + notas[1] + notas[2]} pontos"
+println(resumo)
+string html = """
+    <p>{{ text.name(nome) }}: {{ len(notas) }} notas</p>
+    """
+println(html)
+
+#chaves que nao formam uma expressao continuam sendo texto
+println("css: a {color: red} / json: {\"x\": 1} / vazio: {}")
+
+#sem escrever os tipos
+cidade = "jatai"
+habitantes = 105000
+println("{text.name(cidade)} tem {habitantes} habitantes (cerca de {habitantes / 1000} mil)")

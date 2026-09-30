@@ -1,0 +1,12 @@
+{
+  "nome": "Desfoque",
+  "tipo": "filtro",
+  "descricao": "Desfoca tudo o que esta abaixo. Bom para fundo de titulo ou para esconder algo.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 5,
+  "params": [
+    { "id": "forca", "tipo": "numero", "rotulo": "Forca", "min": 0, "max": 100, "padrao": 30 },
+    { "id": "gradual", "tipo": "sim_nao", "rotulo": "Entrar e sair aos poucos", "padrao": false }
+  ]
+}

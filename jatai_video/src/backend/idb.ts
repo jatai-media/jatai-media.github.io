@@ -2,9 +2,9 @@
 // em %APPDATA%: os projetos e a referencia aos arquivos importados.
 
 const NOME = 'jatai-video';
-const VERSAO = 1;
+const VERSAO = 2;   // 2: a loja 'plugins' (a alca da pasta de plugins)
 
-export type Loja = 'arquivos' | 'projetos';
+export type Loja = 'arquivos' | 'projetos' | 'plugins';
 
 let aberto: Promise<IDBDatabase> | null = null;
 
@@ -16,6 +16,7 @@ function abre(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains('arquivos')) db.createObjectStore('arquivos', { keyPath: 'key' });
       if (!db.objectStoreNames.contains('projetos')) db.createObjectStore('projetos', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('plugins')) db.createObjectStore('plugins', { keyPath: 'key' });
     };
     req.onsuccess = () => ok(req.result);
     req.onerror = () => { aberto = null; falha(req.error); };

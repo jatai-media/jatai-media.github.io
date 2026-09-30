@@ -1,0 +1,85 @@
+#while
+
+int contador = 3
+while contador > 0
+    println("contagem: {contador}")
+    contador = contador - 1
+println("fim da contagem")
+
+#for com range(fim): de 0 ate fim - 1
+
+for i in range(5)
+    print("{i} ")
+println("")
+
+#range(inicio, fim)
+
+int soma = 0
+for n in range(1, 101)
+    soma = soma + n
+println("soma de 1 a 100: {soma}")
+
+#range(inicio, fim, passo)
+
+for par in range(0, 11, 2)
+    print("{par} ")
+println("")
+
+for regressivo in range(10, 0, -3)
+    print("{regressivo} ")
+println("")
+
+#break e continue
+
+for k in range(1, 20)
+    if k % 2 == 0
+        continue
+    if k > 9
+        break
+    print("{k} ")
+println("")
+
+#while com break
+
+int tentativas = 0
+while true
+    tentativas = tentativas + 1
+    if tentativas == 4
+        break
+println("tentativas: {tentativas}")
+
+#lacos aninhados
+
+for linha in range(1, 4)
+    for coluna in range(1, 4)
+        int produto = linha * coluna
+        print("{produto}\t")
+    println("")
+
+#acumulando string
+
+string barra = ""
+int tamanho = 0
+while tamanho < 5
+    barra = barra + "#"
+    tamanho = tamanho + 1
+println("[{barra}]")
+
+#sem escrever os tipos
+
+total = 0
+for valor in range(1, 6)
+    total = total + valor * valor
+println("soma dos quadrados de 1 a 5: {total}")
+
+restante = 10
+while restante > 0
+    ultimo_passo = restante
+    restante = restante - 3
+#ultimo_passo foi criada dentro do while e continua valendo depois dele
+println("ultimo passo: {ultimo_passo}")
+
+estrelas = ""
+for e in range(4)
+    estrelas = estrelas + "*"
+println(estrelas)

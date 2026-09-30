@@ -30,6 +30,11 @@ const en = {
         description: 'Edit videos with cuts, layers, text and soundtracks, and export to MP4.',
         open: 'Open editor',
       },
+      lang: {
+        name: 'Jatai language',
+        description: 'Write and run Jatai programs in the browser, or download the language for your computer.',
+        open: 'Open editor',
+      },
     },
   },
   editor: {

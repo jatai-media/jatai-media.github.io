@@ -1,0 +1,36 @@
+#biblioteca voz: fala (text-to-speech) com as vozes instaladas no Windows (SAPI 5, via COM)
+#uso: import voz
+#
+#   voz.say("Olá, mundo")
+#
+#   void palavra(string p)
+#       print("[{p}]")
+#   voz.say_words("cada palavra chama o callback", palavra)
+
+#fala o texto e espera terminar
+extern void say(string texto)
+
+#fala o texto chamando palavra(p) quando cada palavra comeca a ser falada
+extern void say_words(string texto, void(string) palavra)
+
+#fala sem esperar; use speaking(), wait() e stop()
+extern void say_async(string texto)
+extern bool speaking()
+extern void wait()
+extern void stop()
+
+#grava a fala em um arquivo WAV (22 kHz, 16 bits, mono) em vez de tocar
+extern bool save_wav(string texto, string caminho)
+
+#vozes instaladas (SAPI e as vozes "OneCore" do Windows 10/11)
+extern int voices()
+extern string voice_name(int indice)
+#escolhe a primeira voz cujo nome contem o texto (ex.: "Maria", "Portuguese"); false se nao achar
+extern bool set_voice(string parte_do_nome)
+#nome da voz atual
+extern string voice()
+
+#velocidade de -10 (lenta) a 10 (rapida), 0 = normal
+extern void rate(int velocidade)
+#volume de 0 a 100
+extern void volume(int nivel)

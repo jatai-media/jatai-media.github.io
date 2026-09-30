@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripts Jatai - jat.ai</title>
+<link rel="icon" type="image/png" href="/logo_jatai.png">
+<script type="module" src="./src/script-main.ts"></script>
+</head>
+<body class="sc-pagina">
+
+<header class="toolbar">
+  <div class="brand"><img alt="" src="/logo_jatai.png"><span class="nome">jat<i>.ai</i></span></div>
+  <span class="sc-titulo">Scripts Jatai</span>
+  <div class="sep"></div>
+  <input class="sc-nome" id="scNome" spellcheck="false" title="Nome do script (clique para renomear)">
+  <span class="sc-salvo" id="scSalvo"></span>
+  <div class="spacer"></div>
+  <span class="sc-conexao" id="scConexao"></span>
+  <select class="sc-alvo" id="scAlvo" title="Em qual trabalho o script roda" hidden></select>
+  <button class="btn" id="scAbreVideo" title="Abrir o editor de video em outra guia" hidden>Abrir o editor de video</button>
+  <button class="btn ghost" id="scTirar" title="Tira do video os pontos e mudancas que este script fez (o que foi feito a mao fica)">Tirar do video</button>
+  <button class="btn primary" id="scRodar" title="Rodar no trabalho aberto (Ctrl+Enter). Rodar de novo substitui o que o script fez da outra vez">Rodar</button>
+</header>
+
+<main class="sc-corpo">
+  <aside class="sc-lista">
+    <div class="sc-lista-topo">
+      <button class="btn" id="scNovo" title="Novo script">+ Novo</button>
+      <button class="btn ghost" id="scAbrir" title="Abrir um arquivo .jat do computador">Abrir .jat</button>
+      <input type="file" id="scArquivo" accept=".jat,.txt" hidden>
+    </div>
+    <ul class="sc-itens" id="scItens"></ul>
+    <div class="sc-lista-pe">
+      <button class="btn ghost" id="scBaixar" title="Baixar o script como arquivo .jat">Baixar .jat</button>
+      <button class="btn ghost" id="scApagar" title="Excluir este script">Excluir</button>
+    </div>
+  </aside>
+
+  <section class="sc-editor">
+    <div class="sc-area">
+      <div class="sc-linhas" id="scLinhas" aria-hidden="true"></div>
+      <div class="sc-codigo">
+        <pre class="sc-realce" id="scRealce" aria-hidden="true"></pre>
+        <textarea class="sc-texto" id="scTexto" spellcheck="false" wrap="off"
+                  autocapitalize="off" autocomplete="off"></textarea>
+      </div>
+    </div>
+    <div class="sc-divisor" id="scDivisor" title="Arraste para mudar o tamanho da saida"></div>
+    <div class="sc-saida-topo">
+      <span>Saida</span>
+      <span class="sc-estado" id="scEstado"></span>
+      <div class="spacer"></div>
+      <button class="btn ghost sc-limpar" id="scLimpar">Limpar</button>
+    </div>
+    <pre class="sc-saida" id="scSaida"></pre>
+  </section>
+</main>
+
+<footer class="status">
+  <span>Ctrl+Enter roda</span>
+  <span>Ctrl+S salva (tambem salva sozinho)</span>
+  <span>Tab / Shift+Tab recuam</span>
+  <div class="spacer"></div>
+  <span>Rodar de novo substitui o que o script fez antes; Ctrl+Z no editor de video desfaz</span>
+</footer>
+
+<div id="toast"></div>
+</body>
+</html>

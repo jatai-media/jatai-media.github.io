@@ -1,0 +1,78 @@
+#aritmetica
+
+int a = 17
+int b = 5
+int soma = a + b
+int diferenca = a - b
+int produto = a * b
+int quociente = a / b
+int resto = a % b
+println("{a} + {b} = {soma}")
+println("{a} - {b} = {diferenca}")
+println("{a} * {b} = {produto}")
+println("{a} / {b} = {quociente}")
+println("{a} % {b} = {resto}")
+
+double preco = 19.9
+double desconto = -2.5
+double total = (preco + desconto) * 3.0
+println("total: {total}")
+
+#precedencia
+
+int sem_parenteses = 2 + 3 * 4
+int com_parenteses = (2 + 3) * 4
+int negativo = -(a - b) * 2
+println("2 + 3 * 4 = {sem_parenteses}")
+println("(2 + 3) * 4 = {com_parenteses}")
+println("-(a - b) * 2 = {negativo}")
+
+#reatribuicao
+
+int contador = 0
+contador = contador + 1
+contador = contador * 10
+println("contador: {contador}")
+
+string texto = "Jat"
+texto = texto + "ai"
+println("texto: {texto}")
+
+#comparacao
+
+bool maior = a > b
+bool menor_igual = a <= b
+bool igual = a == b
+bool diferente = a != b
+bool mesmo_texto = texto == "Jatai"
+bool letra_antes = 'a' < 'b'
+println("a > b: {maior}")
+println("a <= b: {menor_igual}")
+println("a == b: {igual}")
+println("a != b: {diferente}")
+println("texto == Jatai: {mesmo_texto}")
+println("'a' < 'b': {letra_antes}")
+
+#logicos
+
+bool ativo = true
+bool admin = false
+bool pode_editar = ativo and admin
+bool pode_ver = ativo or admin
+bool bloqueado = not ativo
+bool regra = a > 10 and not (b == 0) or admin
+println("pode editar: {pode_editar}")
+println("pode ver: {pode_ver}")
+println("bloqueado: {bloqueado}")
+println("regra: {regra}")
+
+#sem escrever os tipos: o tipo vem do resultado da expressao
+
+x = 17
+y = 5
+media = (x + y) / 2
+fracao = double(x) / double(y)
+positivos = x > 0 and y > 0
+saudacao = "Ola, " + texto
+println("media inteira: {media}, fracao: {fracao}, positivos: {positivos}")
+println(saudacao)

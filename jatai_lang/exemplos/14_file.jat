@@ -1,0 +1,69 @@
+import file
+import text
+
+#gravando e lendo arquivos
+
+file.mkdir("saida/relatorios")
+file.write("saida/ola.txt", "primeira linha\n")
+file.append("saida/ola.txt", "segunda linha\n")
+string conteudo = file.read("saida/ola.txt")
+print(conteudo)
+
+int bytes = file.size("saida/ola.txt")
+println("ola.txt tem {bytes} bytes")
+
+#linhas
+
+string[] nomes = ["ana", "bruno", "carla"]
+file.write_lines("saida/nomes.txt", nomes)
+for nome in file.read_lines("saida/nomes.txt")
+    string formatado = text.name(nome)
+    println("- {formatado}")
+
+#pagina HTML gerada
+
+string titulo = "Relatório"
+string pagina = """
+    <html>
+      <body><h1>{{titulo}}</h1></body>
+    </html>
+    """
+file.write("saida/relatorios/índice.html", pagina)
+
+#listando, copiando, renomeando e apagando
+
+file.copy("saida/ola.txt", "saida/copia.txt")
+file.rename("saida/copia.txt", "saida/renomeado.txt")
+for item in file.list("saida")
+    if file.is_dir("saida/" + item)
+        println("[pasta] {item}")
+    else
+        println("[arquivo] {item}")
+
+for item in file.list("saida/relatorios")
+    println("  relatorios/{item}")
+
+if file.exists("saida/nao_existe.txt")
+    println("nao deveria existir")
+else
+    println("nao_existe.txt: nao existe")
+
+#limpando tudo
+
+file.remove("saida/relatorios/índice.html")
+file.remove("saida/relatorios")
+for item in file.list("saida")
+    file.remove("saida/" + item)
+file.remove("saida")
+bool sobrou = file.exists("saida")
+println("pasta saida existe? {sobrou}")
+
+#sem escrever os tipos
+
+arquivo = "notas_temp.txt"
+file.write_lines(arquivo, ["8.5", "7.0", "9.5"])
+soma = 0.0
+for linha in file.read_lines(arquivo)
+    soma = soma + text.to_double(linha)
+println("soma das notas: {soma}")
+file.remove(arquivo)

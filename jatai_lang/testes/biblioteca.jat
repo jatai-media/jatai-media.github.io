@@ -1,0 +1,34 @@
+#biblioteca text usada sem nenhum tipo escrito: a VM e o executavel (-build) devem dar a saida de biblioteca.esperado
+import text
+
+frase = "  o rato roeu a roupa do rei de roma  "
+limpa = text.trim(frase)
+grito = text.upper(limpa)
+println(grito)
+
+palavras = text.split(limpa, " ")
+println("{len(palavras)} palavras, primeira: {palavras[0]}")
+
+contagem = text.count(limpa, "ro")
+posicao = text.find(limpa, "rei")
+tem = text.contains(limpa, "roma")
+println("ro: {contagem}, rei em {posicao}, tem roma: {tem}")
+
+numero = text.to_int("42")
+dobro = numero * 2
+println("dobro: {dobro}")
+
+fn titulo(s)
+    return text.name(s)
+
+fn resumo(lista)
+    maiores = []
+    for p in lista
+        if text.length(p) > 3
+            maiores.append(text.capitalize(p))
+    return text.join(maiores, ", ")
+
+println(titulo("joão da silva"))
+println(resumo(palavras))
+println(text.join(text.lines("a\nb\nc"), "|"))
+println("interp: {text.repeat("=", 5)} {text.slice(limpa, 2, 6)}")

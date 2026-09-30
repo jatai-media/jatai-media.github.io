@@ -1,0 +1,80 @@
+#if, elif e else
+
+double nota = 6.5
+
+if nota >= 7.0
+    println("aprovado")
+elif nota >= 5.0
+    println("recuperacao")
+else
+    println("reprovado")
+
+#so if
+
+int idade = 20
+if idade >= 18
+    println("maior de idade")
+
+#if e else
+
+int numero = 7
+if numero % 2 == 0
+    println("{numero} e par")
+else
+    println("{numero} e impar")
+
+#condicao com and, or e not
+
+bool ativo = true
+bool admin = false
+if ativo and not admin
+    println("usuario comum ativo")
+
+if admin or idade > 60
+    println("acesso prioritario")
+else
+    println("acesso normal")
+
+#variavel bool direto como condicao
+
+if ativo
+    println("conta ativa")
+
+#blocos aninhados e variaveis locais
+
+int temperatura = 32
+string clima = "indefinido"
+if temperatura > 25
+    clima = "quente"
+    if temperatura > 30
+        string alerta = "beba agua"
+        println("muito quente: {alerta}")
+elif temperatura > 15
+    clima = "agradavel"
+else
+    clima = "frio"
+println("clima: {clima}")
+
+#varios elif
+
+char conceito = 'B'
+if conceito == 'A'
+    println("excelente")
+elif conceito == 'B'
+    println("bom")
+elif conceito == 'C'
+    println("regular")
+else
+    println("insuficiente")
+
+#sem escrever os tipos
+
+pontos = 72
+if pontos >= 70
+    faixa = "ouro"
+elif pontos >= 40
+    faixa = "prata"
+else
+    faixa = "bronze"
+#faixa foi criada dentro do if/elif/else e continua valendo aqui
+println("faixa: {faixa}")

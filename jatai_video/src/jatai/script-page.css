@@ -1,0 +1,84 @@
+/* script-page.css - a guia do editor de scripts (script.html) */
+
+body.sc-pagina { --saida-h: 190px; --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace; }
+
+.sc-titulo { font-weight: 600; color: var(--muted); }
+.sc-nome { background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--text);
+           font: inherit; font-weight: 600; padding: 5px 8px; min-width: 120px; width: 260px; }
+.sc-nome:hover { border-color: var(--line); }
+.sc-nome:focus { outline: none; border-color: var(--accent-dim); background: var(--panel-2); }
+.sc-salvo { color: var(--dim); font-size: 12px; }
+.sc-conexao { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.sc-conexao::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #5a3a3a; }
+.sc-conexao.ok::before { background: #3fb950; }
+.sc-alvo { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+           padding: 5px 6px; font: inherit; }
+
+.sc-corpo { display: flex; min-height: 0; }
+
+/* lista de scripts */
+.sc-lista { width: 220px; flex: none; display: flex; flex-direction: column; min-height: 0;
+            background: var(--panel); border-right: 1px solid var(--line); }
+.sc-lista-topo, .sc-lista-pe { display: flex; gap: 6px; padding: 10px; }
+.sc-lista-pe { border-top: 1px solid var(--line-soft); }
+.sc-lista-topo .btn, .sc-lista-pe .btn { flex: 1; padding: 5px 6px; }
+.sc-itens { list-style: none; margin: 0; padding: 0 6px; overflow: auto; flex: 1; }
+.sc-itens li { padding: 7px 10px; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column;
+               gap: 1px; border: 1px solid transparent; }
+.sc-itens li:hover { background: var(--panel-2); }
+.sc-itens li.atual { background: var(--accent-soft); border-color: var(--accent-dim); }
+.sc-itens .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-itens .q { font-size: 11px; color: var(--dim); }
+
+/* editor */
+.sc-editor { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #0e1117; }
+.sc-area { flex: 1; display: flex; min-height: 0; }
+.sc-linhas, .sc-realce, .sc-texto {
+  font-family: var(--mono); font-size: 13.5px; line-height: 21px; tab-size: 4;
+  font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
+}
+.sc-linhas { flex: none; width: 52px; padding: 12px 10px 12px 0; text-align: right; color: var(--dim);
+             overflow: hidden; background: #0c0f14; border-right: 1px solid var(--line-soft);
+             white-space: pre; box-sizing: border-box; }
+.sc-linhas .erro { color: #ff8a80; background: rgba(255, 90, 90, .12); }
+.sc-codigo { position: relative; flex: 1; min-width: 0; }
+.sc-realce, .sc-texto { position: absolute; inset: 0; margin: 0; padding: 12px 14px; border: 0;
+                        white-space: pre; overflow: auto; box-sizing: border-box; }
+.sc-realce { pointer-events: none; overflow: hidden; color: #d5dae3; }
+.sc-texto { background: transparent; color: transparent; caret-color: #f5f7fa; resize: none; outline: none;
+            user-select: text; -webkit-user-select: text; }
+.sc-texto::selection { background: rgba(240, 180, 41, .28); color: transparent; }
+
+/* cores do Jatai */
+.jr-com     { color: #6a7385; font-style: italic; }
+.jr-str     { color: #a5d6a7; }
+.jr-esc     { color: #ffcc80; }
+.jr-interp  { color: #f0b429; font-weight: 600; }
+.jr-num     { color: #f78c6c; }
+.jr-kw      { color: #c792ea; }
+.jr-fn      { color: #f0b429; font-weight: 600; }
+.jr-logic   { color: #c792ea; }
+.jr-tipo    { color: #4fc1e9; }
+.jr-bool    { color: #f78c6c; }
+.jr-builtin { color: #82aaff; }
+.jr-call    { color: #82aaff; }
+.jr-def     { color: #ffd479; font-weight: 600; }
+.jr-mod     { color: #4fd6be; }
+.jr-op      { color: #89ddff; }
+
+/* saida */
+.sc-divisor { height: 5px; flex: none; cursor: row-resize; background: var(--line); }
+.sc-divisor:hover, .sc-divisor.arrastando { background: var(--accent-dim); }
+.sc-saida-topo { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 14px; flex: none;
+                 background: var(--panel); color: var(--muted); font-size: 12px; }
+.sc-estado.erro { color: #ff8a80; }
+.sc-estado.ok { color: #3fb950; }
+.sc-limpar { padding: 2px 8px; font-size: 12px; }
+.sc-saida { height: var(--saida-h); flex: none; margin: 0; padding: 8px 14px; overflow: auto; background: #0b0d12;
+            color: #c9ced8; white-space: pre-wrap; font-family: var(--mono); font-size: 12.5px; line-height: 1.5;
+            user-select: text; -webkit-user-select: text; }
+.sc-saida:empty::before { content: "a saida do script aparece aqui"; color: var(--dim); }
+.sc-saida .erro { color: #ff8a80; }
+.sc-saida .nota { color: #e0b66a; }
+.sc-saida .aviso { color: var(--muted); }
+.sc-saida a { color: inherit; text-decoration: underline dotted; cursor: pointer; }

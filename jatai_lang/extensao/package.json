@@ -1,0 +1,49 @@
+{
+  "name": "jatai",
+  "displayName": "Jatai",
+  "description": "Syntax highlighting para a linguagem Jatai (arquivos .jat)",
+  "version": "0.1.6",
+  "publisher": "jatai",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "icon": "icons/jatai.png",
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "configurationDefaults": {
+      "[jatai]": {
+        "editor.defaultColorDecorators": "never"
+      }
+    },
+    "languages": [
+      {
+        "id": "jatai",
+        "aliases": [
+          "Jatai",
+          "jatai"
+        ],
+        "extensions": [
+          ".jat"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/jatai-file.png",
+          "dark": "./icons/jatai-file.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "jatai",
+        "scopeName": "source.jatai",
+        "path": "./syntaxes/jatai.tmLanguage.json"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.2"
+  }
+}

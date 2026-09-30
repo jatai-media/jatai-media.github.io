@@ -1,0 +1,76 @@
+import http
+import text
+
+#servidor web: rode da pasta do projeto (jatai exemplos/16_http.jat) e abra o endereco mostrado
+
+global int visitas = 0
+global string ip = http.my_ip()
+
+string inicio(string caminho)
+    visitas = visitas + 1
+    return """
+        <!DOCTYPE html>
+        <html lang="pt-br">
+        <head>
+          <meta charset="utf-8">
+          <title>Jatai + http</title>
+          <link rel="stylesheet" href="/site/estilo.css">
+        </head>
+        <body>
+          <h1>Olá do Jatai!</h1>
+          <p>Servidor rodando em <code>{{ip}}</code>. Visitas: {{visitas}}.</p>
+          <ul>
+            <li><a href="/ola?nome=maria%20da%20silva">/ola?nome=...</a></li>
+            <li><a href="/api/status">/api/status</a> (JSON)</li>
+            <li><a href="/site/">/site/</a> (arquivos estáticos)</li>
+            <li><a href="/sem_tipo">/sem_tipo</a> (rota escrita sem tipos)</li>
+            <li><a href="/parar">/parar</a> (encerra o servidor)</li>
+          </ul>
+        </body>
+        </html>
+        """
+
+string ola(string caminho)
+    string nome = text.name(http.query("nome"))
+    if len(nome) == 0
+        nome = "visitante"
+    return "<h1>Olá, {nome}!</h1><p><a href=\"/\">voltar</a></p>"
+
+string status_api(string caminho)
+    http.content_type("application/json")
+    string metodo = http.method()
+    return """{"visitas": {{visitas}}, "ip": "{{ip}}", "metodo": "{{metodo}}"}"""
+
+string eco(string caminho)
+    http.content_type("text/plain; charset=utf-8")
+    if http.method() != "POST"
+        http.status(405)
+        return "use POST"
+    return "recebi: " + http.body()
+
+string velho(string caminho)
+    http.redirect("/")
+    return ""
+
+string parar(string caminho)
+    http.stop()
+    return "<h1>Servidor encerrado</h1>"
+
+http.route("/", inicio)
+http.route("/ola", ola)
+http.route("/api/status", status_api)
+http.route("/eco", eco)
+http.route("/velho", velho)
+http.route("/parar", parar)
+
+#rota sem tipos: fn recebe o tipo da assinatura que http.route espera (string(string))
+fn sem_tipo(caminho)
+    total = visitas * 2
+    return "<p>rota {caminho} escrita sem tipos (visitas x 2 = {total})</p>"
+http.route("/sem_tipo", sem_tipo)
+
+http.static_dir("/site", "exemplos/site")
+
+println("meu ip: {ip}")
+http.serve(8080)
+println("servidor encerrado depois de {visitas} visitas")

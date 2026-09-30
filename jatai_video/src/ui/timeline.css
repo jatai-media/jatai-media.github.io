@@ -70,6 +70,9 @@
     display: flex; align-items: flex-start;
   }
   /* Sobre a tira de quadros o nome se perderia; a tarja o segura. */
+  /* o id que um script Jatai usa para chamar o clipe */
+  .clip .cl-id { background: var(--accent); color: #1a1204; border-radius: 3px;
+                 padding: 0 4px; margin-right: 5px; font: 600 10px ui-monospace, Consolas, monospace; }
   .clip .cl { padding: 2px 7px; font-size: 11px; color: #dbe7f5;
               white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
               position: relative; z-index: 2; max-width: 100%;
@@ -119,6 +122,16 @@
   .clip.imagem { background: linear-gradient(180deg, #3a2d1c, #2c2216);
                  border-color: #5c4620; }
   .clip.imagem .cl { color: #e3c88a; }
+  /* Plugin: nem quadros nem onda, so a etiqueta - como o texto, com cor propria. */
+  .clip.plugin { background: linear-gradient(180deg, #173a3a, #122c2c);
+                 border-color: #25605c; align-items: center; }
+  .clip.plugin .cl { color: #9fe3da; }
+  .clip.plugin:hover .trim, .clip.plugin.on .trim { background: #2f7a72; }
+  /* Filtro: camada de ajuste - listrada, porque nao e uma imagem, e sim uma
+     mudanca sobre as de baixo. */
+  .clip.plugin.filtro { background: repeating-linear-gradient(135deg, #2a2447 0 6px, #231e3b 6px 12px);
+                        border-color: #5a4a9a; }
+  .clip.plugin.filtro .cl { color: #c9bdf5; }
   /* ================================================== o bloco fundido
      As pecas continuam sendo pecas por dentro - os pulos que a edicao tirou
      seguem la - mas na tela o bloco e uma peca so: as costuras internas somem,

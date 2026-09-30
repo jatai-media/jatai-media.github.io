@@ -24,7 +24,7 @@ export const api: Ponte = backend;
 // assim que o de Imagem continuou dizendo o nome do clipe anterior depois de
 // se escolher outro na linha do tempo.
 export const SELECTION_PANELS = ["timeline", "props", "audio", "texto", "imagem",
-                          "efeitos"];
+                          "efeitos", "plugins"];
 
 // Onde esta camada fica na pilha, como numero para o navegador empilhar.
 //
@@ -533,6 +533,14 @@ export const state = {
   pos: 0, playing: false,
   // Relogio do som: a ultima posicao recebida e quando ela chegou.
   clockPos: 0, clockAt: 0,
+  // O instante mais adiantado ja mostrado nesta reproducao: a imagem nao volta
+  // para tras quando o som informa uma posicao atrasada (ver tick).
+  clockMin: 0,
+  // Muda a cada (re)inicio do som: resposta do motor pedida antes dele e velha.
+  clockGen: 0, clockBusy: false,
+  // Som mandado tocar, mas ainda sem sair (arranque + latencia da placa): a
+  // imagem espera parada no ponto de partida em vez de sair na frente.
+  clockWait: false,
   // Falso quando nao ha placa: o cursor corre pelo relogio da pagina.
   audioClock: true, audioWarned: false,
   // A janela acompanha a agulha durante a reproducao. E uma escolha, e nao um

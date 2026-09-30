@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jatai — escreva e rode no navegador</title>
+<meta name="description" content="Editor da linguagem Jatai no navegador: escreva, rode e baixe o Jatai para o seu computador.">
+<link rel="icon" type="image/png" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script>
+  // Tema antes do CSS, para nao piscar. Mesma chave do hub (src/shared/theme.ts).
+  (function () {
+    var t;
+    try { t = localStorage.getItem('jatai.theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') t = 'dark';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<!-- O GitHub Pages nao manda COOP/COEP; este service worker os acrescenta, e
+     com eles o programa pode esperar o que se digita no terminal. -->
+<script src="./coi.js"></script>
+<script type="module" src="./src/main.ts"></script>
+</head>
+<body>
+<div class="ide">
+  <header class="titulo">
+    <a class="marca" href="/" title="Voltar ao Jataí">
+      <img src="/icons/icon-192.png" alt="" width="22" height="22">
+      <span>Jatai</span>
+    </a>
+    <div class="acoes">
+      <button class="bt rodar" id="btRodar" title="Rodar o arquivo aberto (Ctrl+Enter ou F5)">
+        <svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
+        <span>Rodar</span>
+      </button>
+      <button class="bt parar" id="btParar" title="Parar (Shift+F5)" disabled>
+        <svg viewBox="0 0 16 16" width="12" height="12"><rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor"/></svg>
+        <span>Parar</span>
+      </button>
+    </div>
+    <div class="espaco" id="tituloArquivo"></div>
+    <a class="bt baixar" id="btBaixar" title="Baixar o Jatai para o Windows">
+      <svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 1.5v8.2m0 0-3.2-3.2M8 9.7l3.2-3.2M2.5 11v2.5h11V11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Baixar o Jatai</span>
+    </a>
+    <button class="bt icone" id="btTema" title="Tema claro / escuro">
+      <svg viewBox="0 0 16 16" width="15" height="15"><path d="M13.5 9.8A5.8 5.8 0 0 1 6.2 2.5a5.8 5.8 0 1 0 7.3 7.3z" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <div class="corpo">
+    <nav class="atividades" aria-label="Paineis">
+      <button class="atv on" data-vista="explorador" title="Explorador (Ctrl+Shift+E)">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zm0 0v5h5M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="atv" data-vista="exemplos" title="Exemplos">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="atv" data-vista="bibliotecas" title="Bibliotecas">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 4h3v16H5zM10 4h3v16h-3zM15.2 4.6l2.9-.8 3.9 15.4-2.9.8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="espaco"></div>
+      <button class="atv" data-vista="baixar" title="Baixar o Jatai">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v3h16v-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </nav>
+
+    <aside class="lateral" id="lateral"></aside>
+    <div class="divisor vertical" id="divLateral"></div>
+
+    <main class="centro">
+      <div class="abas" id="abas"></div>
+      <div class="aviso-leitura" id="avisoLeitura" hidden></div>
+      <div class="editor" id="editor"></div>
+      <div class="divisor horizontal" id="divPainel"></div>
+      <section class="painel" id="painel">
+        <div class="painel-abas">
+          <button class="pab on" data-painel="terminal">Terminal</button>
+          <button class="pab" data-painel="entrada">Entrada</button>
+          <button class="pab" data-painel="problemas">Problemas <span class="contagem" id="contProblemas"></span></button>
+          <div class="espaco"></div>
+          <button class="bt icone" id="btLimpar" title="Limpar o terminal">
+            <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 4h10M6 4V2.5h4V4m-5.5 0 .7 9.5h5.6l.7-9.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="painel-corpo" data-painel="terminal"><div class="terminal" id="terminal" tabindex="0"></div></div>
+        <div class="painel-corpo" data-painel="entrada" hidden>
+          <textarea id="entrada" spellcheck="false" placeholder="O que o programa vai ler (io.input, io.read_line...), uma resposta por linha."></textarea>
+        </div>
+        <div class="painel-corpo" data-painel="problemas" hidden><div class="problemas" id="problemas"></div></div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="status">
+    <span id="stEstado" class="estado">pronto</span>
+    <span id="stModo" title=""></span>
+    <div class="espaco"></div>
+    <span id="stCursor">Ln 1, Col 1</span>
+    <span>Espaços: 4</span>
+    <span>UTF-8</span>
+    <span>Jatai</span>
+  </footer>
+</div>
+</body>
+</html>

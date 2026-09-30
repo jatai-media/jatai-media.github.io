@@ -1,0 +1,103 @@
+#tipagem automatica: a VM e o executavel (-build) devem dar a saida de tipagem.esperado
+import text
+
+#variaveis: o tipo vem do valor
+x = 10
+preco = 2.5
+nome = "ana"
+letra = 'j'
+ativo = true
+x = x + 5
+println("{x} {preco} {nome} {letra} {ativo}")
+
+const LIMITE = 3
+global contador = 0
+global const VERSAO = "1.0"
+
+#variavel criada dentro de if/else vale depois dele (como no Python)
+if x > 10
+    faixa = "alta"
+else
+    faixa = "baixa"
+println("faixa: {faixa}")
+
+for i in range(LIMITE)
+    ultimo = i * 10
+println("ultimo: {ultimo}")
+
+#listas: [] recebe o tipo no primeiro append
+nums = [3, 1, 4]
+palavras = []
+for n in nums
+    palavras.append("n{n}")
+println("{len(palavras)}: {text.join(palavras, ",")}")
+
+#funcoes sem tipo: uma versao para cada tipo de argumento
+fn dobro(v)
+    return v + v
+
+println("{dobro(21)} {dobro(1.25)} {dobro("ab")}")
+
+fn maior(lista)
+    m = lista[0]
+    for v in lista
+        if v > m
+            m = v
+    return m
+
+println("{maior(nums)} {maior([2.5, 9.5, 1.0])} {maior(['a', 'z', 'q'])}")
+
+#retorno deduzido com recursao (o caso base vem primeiro)
+fn fib(n)
+    if n < 2
+        return n
+    return fib(n - 1) + fib(n - 2)
+println("fib(20) = {fib(20)}")
+
+#sem return: void
+fn contar()
+    contador = contador + 1
+
+contar()
+contar()
+println("contador: {contador} (versao {VERSAO})")
+
+#mistura: parametro com tipo e sem tipo, retorno com tipo
+string rotulo(string prefixo, valor)
+    return "{prefixo}={valor}"
+println(rotulo("a", 1) + " " + rotulo("b", false) + " " + rotulo("c", 'x'))
+
+#funcao sem tipo passada como valor: a assinatura esperada define os tipos
+int aplica(int(int) f, int a)
+    return f(a)
+fn triplo(v)
+    return v * 3
+println("aplica: {aplica(triplo, 7)} {aplica(dobro, 7)}")
+
+#funcao sem tipo chamando outra
+fn resumo(lista)
+    total = 0
+    for v in lista
+        total = total + v
+    if total > 5
+        status = "grande"
+    else
+        status = "pequeno"
+    return "{len(lista)} itens, soma {total}, {status}"
+println(resumo(nums))
+println(resumo([1, 1]))
+
+#global [] recebe o tipo dentro de uma funcao
+global historico = []
+fn registra(evento)
+    historico.append(text.upper(evento))
+registra("inicio")
+registra("fim")
+println(text.join(historico, " > "))
+
+#while com variavel criada no corpo
+k = 0
+while k < 3
+    quadrado = k * k
+    k = k + 1
+println("quadrado final: {quadrado}")

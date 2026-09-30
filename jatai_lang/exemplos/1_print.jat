@@ -1,0 +1,3 @@
+println("imprimindo valor com quebra automatica")
+print("impresso na ")
+print("mesma linha\n")

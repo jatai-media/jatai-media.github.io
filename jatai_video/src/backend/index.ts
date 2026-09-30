@@ -97,6 +97,11 @@ export const backend = {
 
   // A pagina montou: e aqui que a janela passa a aceitar arquivos largados.
   async ready() {
+    // O som e aberto agora, com a pagina ociosa, e nao no primeiro play (ver
+    // motor.aquece em som.ts).
+    const aquece = () => motor.aquece();
+    if ('requestIdleCallback' in window) requestIdleCallback(aquece, { timeout: 2000 });
+    else setTimeout(aquece, 500);
     ligaArrasto(
       (on) => window.jtDrag?.(on),
       async (chegados) => {

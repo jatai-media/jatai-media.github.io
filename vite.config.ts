@@ -1,18 +1,24 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-// Cada ferramenta do hub é uma página própria. Ao adicionar uma nova,
-// registre o HTML dela aqui.
+// O ecossistema fica lado a lado nesta pasta:
+//
+//   index.html + src/   o hub (e o i18n, o tema e o seletor de idioma, que as
+//                       ferramentas tambem usam)
+//   jatai_image/        editor de design - entra neste build
+//   jatai_video/        editor de video - projeto independente, com package.json
+//                       e build proprios (npm run build chama o dele, que escreve
+//                       em dist/jatai_video)
+//   jatai_lang/         a linguagem Jatai - so local, fora do git
+//
+// Uma ferramenta nova que use o i18n do hub entra aqui, como o jatai_image.
 export default defineConfig({
   base: '/',
   build: {
     rollupOptions: {
       input: {
         hub: resolve(import.meta.dirname, 'index.html'),
-        canvas: resolve(import.meta.dirname, 'canvas/index.html'),
-        // O editor de video e um projeto a parte, com config propria para
-        // testes locais (jatai_video/vite.config.ts); aqui ele so entra no build.
-        video: resolve(import.meta.dirname, 'jatai_video/index.html'),
+        image: resolve(import.meta.dirname, 'jatai_image/index.html'),
       },
     },
   },

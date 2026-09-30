@@ -1,0 +1,93 @@
+#biblioteca text: manipulacao de strings
+#uso: import text
+#posicoes (find, slice) sao em bytes, como len(); length() conta caracteres
+
+#maiusculas e minusculas (entende acentos do portugues)
+extern string upper(string s)
+extern string lower(string s)
+
+#formata nome proprio: "  jOAO da  SILVA " -> "Joao da Silva"
+extern string name(string s)
+
+#primeira letra maiuscula, o resto como esta
+extern string capitalize(string s)
+
+#remove espacos, tabs e quebras de linha das pontas
+extern string trim(string s)
+extern string trim_left(string s)
+extern string trim_right(string s)
+
+#busca
+extern bool contains(string s, string parte)
+extern bool starts_with(string s, string prefixo)
+extern bool ends_with(string s, string sufixo)
+extern int find(string s, string parte)
+extern int find_from(string s, string parte, int inicio)
+extern int count(string s, string parte)
+
+#transformacao
+extern string replace(string s, string antigo, string novo)
+extern string slice(string s, int inicio, int fim)
+extern string repeat(string s, int vezes)
+
+#caracteres (UTF-8), nao bytes
+extern int length(string s)
+
+#conversao de texto para numero (texto invalido da 0)
+extern bool is_int(string s)
+extern int to_int(string s)
+extern double to_double(string s)
+
+#divide s em partes separadas por sep
+string[] split(string s, string sep)
+    string[] partes = []
+    if len(sep) == 0
+        partes.append(s)
+        return partes
+    int inicio = 0
+    int pos = find_from(s, sep, 0)
+    while pos >= 0
+        partes.append(slice(s, inicio, pos))
+        inicio = pos + len(sep)
+        pos = find_from(s, sep, inicio)
+    partes.append(slice(s, inicio, len(s)))
+    return partes
+
+#linhas do texto (aceita \n e \r\n); como o splitlines() do Python, a quebra
+#no fim do texto nao gera uma linha vazia a mais: "a\nb\n" -> ["a", "b"]
+string[] lines(string s)
+    string[] resultado = []
+    string[] partes = split(s, "\n")
+    int n = len(partes)
+    if ends_with(s, "\n") or len(s) == 0
+        n = n - 1
+    for i in range(n)
+        string linha = partes[i]
+        if ends_with(linha, "\r")
+            resultado.append(slice(linha, 0, len(linha) - 1))
+        else
+            resultado.append(linha)
+    return resultado
+
+#junta as partes colocando sep entre elas
+string join(string[] partes, string sep)
+    string r = ""
+    for i in range(len(partes))
+        if i > 0
+            r = r + sep
+        r = r + partes[i]
+    return r
+
+#texto antes da primeira ocorrencia de sep (ou tudo, se nao houver)
+string before(string s, string sep)
+    int pos = find(s, sep)
+    if pos < 0
+        return s
+    return slice(s, 0, pos)
+
+#texto depois da primeira ocorrencia de sep (ou "", se nao houver)
+string after(string s, string sep)
+    int pos = find(s, sep)
+    if pos < 0
+        return ""
+    return slice(s, pos + len(sep), len(s))

@@ -1,0 +1,43 @@
+#biblioteca http: servidor web simples e o IP desta maquina
+#uso: import http
+#
+#   string inicio(string caminho)
+#       return "<h1>Ola!</h1>"
+#
+#   http.route("/", inicio)
+#   http.static_dir("/site", "site")
+#   http.serve(8080)
+
+#IP desta maquina na rede local (ex.: 192.168.0.10); "127.0.0.1" se nao houver rede
+extern string my_ip()
+
+#rotas: o handler recebe o caminho pedido e devolve o corpo da resposta (HTML por padrao)
+#caminho exato ("/sobre") ou prefixo terminado em * ("/api/*"); vale a rota mais especifica
+extern void route(string caminho, string(string) handler)
+
+#serve os arquivos de uma pasta a partir de um prefixo: static_dir("/", "site")
+#pastas servem o index.html; caminhos com ".." sao recusados
+extern void static_dir(string prefixo, string pasta)
+
+#atende pedidos ate stop(): serve() aceita conexoes da rede, serve_local() so deste computador
+extern void serve(int porta)
+extern void serve_local(int porta)
+extern void stop()
+
+#o pedido atual (use dentro de um handler)
+extern string method()
+extern string path()
+extern string query(string nome)
+extern string header(string nome)
+extern string body()
+extern string client_ip()
+
+#a resposta atual (use dentro de um handler; padrao: 200, text/html)
+extern void status(int codigo)
+extern void content_type(string tipo)
+extern void set_header(string nome, string valor)
+
+#redireciona para outra url
+void redirect(string url)
+    status(302)
+    set_header("Location", url)

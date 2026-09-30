@@ -1,0 +1,24 @@
+1 chamada: -1
+2 menos: -1
+3 soma: 56
+4 array: 7 8 9
+5 fill: 10 3
+6 indice: 12 0
+7 strings: g|m / g!m
+8 global: -1
+9 igual: false
+10 aninhada: -19
+11 fnvar: -1
+12 if: menor
+13 indices: 24
+fim: 24
+14 cadeia main: sax
+15 cadeia funcao: txb
+16 funcao global: -1
+17 arr: 201
+18 set: 102
+19 arr main: 102 103
+20 fill global: 25 26
+21 so local: -22 33
+<fala 1><fala 2>22 print: 1 e 2
+<fala 3>23 um: 3

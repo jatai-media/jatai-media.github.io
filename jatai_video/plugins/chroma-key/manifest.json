@@ -1,0 +1,17 @@
+{
+  "nome": "Chroma key",
+  "tipo": "filtro",
+  "alcance": "camada",
+  "descricao": "Tira o fundo de uma cor do clipe logo abaixo, e o que esta mais abaixo aparece no lugar. Use o conta-gotas para escolher as cores do fundo na tela: cada clique soma uma cor, e com a luz batendo diferente no fundo (claro perto da luz, escuro na sombra) basta ir clicando nas partes que sobraram. Funciona melhor com fundo de cor forte (verde, azul); com fundo neutro (preto, branco, cinza) separa pelo brilho, e o que tiver brilho parecido com o fundo sai junto.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 10,
+  "params": [
+    { "id": "cores",      "tipo": "cores",   "rotulo": "Cores do fundo", "padrao": ["#00b140"], "contagotas": true, "max": 8 },
+    { "id": "tolerancia", "tipo": "numero",  "rotulo": "Tolerancia",   "min": 0, "max": 100, "padrao": 15 },
+    { "id": "suavidade",  "tipo": "numero",  "rotulo": "Borda suave",  "min": 0, "max": 100, "padrao": 10 },
+    { "id": "despill",    "tipo": "numero",  "rotulo": "Tirar reflexo", "min": 0, "max": 100, "padrao": 60, "unidade": "%" },
+    { "id": "ruido",      "tipo": "numero",  "rotulo": "Limpar ruido",  "min": 0, "max": 100, "padrao": 30 },
+    { "id": "mascara",    "tipo": "sim_nao", "rotulo": "Ver a mascara (branco fica, preto sai)", "padrao": false }
+  ]
+}

@@ -8,6 +8,8 @@ import './ui/base.css';
 import './ui/dock.css';
 import './ui/panels.css';
 import './ui/timeline.css';
+// as fontes dos textos, empacotadas (ver ui/fontes.ts)
+import './ui/fontes';
 
 import './ui/core';
 import './ui/dialogo';

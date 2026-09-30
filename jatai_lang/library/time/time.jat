@@ -1,0 +1,16 @@
+#biblioteca time: medir tempo e pausar a execucao
+#uso: import time
+
+#segundos em um relogio monotonico de alta resolucao; use a diferenca entre dois valores
+extern double now()
+
+#pausa a execucao por alguns segundos (aceita fracao: 0.1 = 100 ms)
+extern void sleep(double segundos)
+
+#segundos passados desde inicio (um valor devolvido por now())
+double elapsed(double inicio)
+    return now() - inicio
+
+#milissegundos passados desde inicio
+double elapsed_ms(double inicio)
+    return (now() - inicio) * 1000.0

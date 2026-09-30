@@ -1,0 +1,51 @@
+#biblioteca file: arquivos e pastas
+#uso: import file
+#caminhos em UTF-8; arquivos lidos e gravados como estao (sem converter \n)
+#erros (arquivo inexistente, sem permissao) encerram o programa: use exists() antes
+
+import text
+
+#conteudo inteiro do arquivo
+extern string read(string caminho)
+
+#cria ou substitui o arquivo
+extern void write(string caminho, string conteudo)
+
+#acrescenta no fim do arquivo (cria se nao existir)
+extern void append(string caminho, string conteudo)
+
+extern bool exists(string caminho)
+extern bool is_dir(string caminho)
+
+#tamanho em bytes
+extern int size(string caminho)
+
+#cria a pasta e as intermediarias que faltarem
+extern void mkdir(string caminho)
+
+#apaga arquivo ou pasta vazia (se nao existir, nao faz nada)
+extern void remove(string caminho)
+
+#copia arquivo (substitui o destino)
+extern void copy(string origem, string destino)
+
+#renomeia ou move
+extern void rename(string origem, string destino)
+
+#uso interno: nomes separados por \n (use list)
+extern string list_raw(string pasta)
+
+#linhas do arquivo (aceita \n e \r\n)
+string[] read_lines(string caminho)
+    return text.lines(read(caminho))
+
+#grava as linhas, cada uma terminada por \n
+void write_lines(string caminho, string[] linhas)
+    string conteudo = ""
+    for linha in linhas
+        conteudo = conteudo + linha + "\n"
+    write(caminho, conteudo)
+
+#nomes de arquivos e pastas dentro da pasta, em ordem alfabetica
+string[] list(string pasta)
+    return text.lines(list_raw(pasta))

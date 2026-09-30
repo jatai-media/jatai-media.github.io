@@ -1,0 +1,44 @@
+#constantes nao podem ser alteradas depois de declaradas
+
+const int idade = 20
+const double PI = 3.14159
+const string nome = "Ana"
+const char inicial = 'A'
+const bool ativo = true
+
+println("{nome} ({inicial}) tem {idade} anos, ativo: {ativo}")
+
+#constantes em expressoes
+
+const double raio = 2.0
+double area = PI * raio * raio
+println("area do circulo: {area}")
+
+#constante calculada a partir de outras
+
+const int dias_por_semana = 7
+const int semanas = 4
+const int dias = dias_por_semana * semanas
+println("{semanas} semanas = {dias} dias")
+
+#constante como limite de laco
+
+const int LIMITE = 5
+int total = 0
+for i in range(LIMITE)
+    total = total + i
+println("soma ate {LIMITE}: {total}")
+
+#constante local de bloco
+
+if idade >= 18
+    const string mensagem = "maior de idade"
+    println(mensagem)
+
+#sem escrever os tipos: const nome = valor
+
+const GRAVIDADE = 9.8
+const PLANETA = "Terra"
+const MAX_TENTATIVAS = 3
+peso = 70.0 * GRAVIDADE
+println("em {PLANETA}, peso = {peso} N; tentativas: {MAX_TENTATIVAS}")

@@ -1,0 +1,71 @@
+#ordem de avaliacao: a VM e o executavel (-build) devem dar a saida de ordem.esperado
+#(tudo da esquerda para a direita, mesmo com funcoes que mudam globais ou escrevem)
+
+global int c = 0
+global string g = "g"
+int prox()
+    c = c + 1
+    return c
+string muda()
+    g = g + "!"
+    return "m"
+int sub(int a, int b)
+    return a - b
+string junta(string a, string b)
+    return a + "|" + b
+int aplica(int(int, int) f, int a, int b)
+    return f(a, b)
+
+println("1 chamada: {sub(prox(), prox())}")
+println("2 menos: {prox() - prox()}")
+int x = prox() * 10 + prox()
+println("3 soma: {x}")
+int[] v = [prox(), prox(), prox()]
+println("4 array: {v[0]} {v[1]} {v[2]}")
+int[] w = [prox()] * 3
+println("5 fill: {w[0]} {len(w)}")
+int[] z = [0] * 40
+z[prox() - 10] = prox()
+println("6 indice: {z[1]} {z[2]}")
+println("7 strings: {junta(g, muda())} / {g + muda()}")
+println("8 global: {sub(c, prox())}")
+bool igual = prox() == prox()
+println("9 igual: {igual}")
+println("10 aninhada: {sub(sub(prox(), prox()), prox())}")
+println("11 fnvar: {aplica(sub, prox(), prox())}")
+if prox() < prox()
+    println("12 if: menor")
+else
+    println("12 if: maior")
+println("13 indices: {z[prox() - 20] + prox()}")
+println("fim: {c}")
+global int[] arr = [100, 200, 300]
+int cresce()
+    arr[0] = arr[0] + 1
+    return 1
+string anexa()
+    g = g + "#"
+    return "x"
+g = "s"
+g = g + "a" + anexa()
+println("14 cadeia main: {g}")
+void dentro()
+    g = "t"
+    g = g + anexa() + "b"
+    println("15 cadeia funcao: {g}")
+    int r = c - prox()
+    println("16 funcao global: {r}")
+    println("17 arr: {arr[cresce() - 1] + arr[0]}")
+    arr[cresce()] = arr[0]
+    println("18 set: {arr[1]}")
+dentro()
+println("19 arr main: {arr[cresce() - 1]} {arr[0]}")
+int[] m = [c] * prox()
+println("20 fill global: {m[0]} {len(m)}")
+int local = 5
+println("21 so local: {sub(local, prox())} {local + prox()}")
+int fala(int n)
+    print("<fala {n}>")
+    return n
+println("22 print: {fala(1)} e {fala(2)}")
+println("23 um: {fala(3)}")

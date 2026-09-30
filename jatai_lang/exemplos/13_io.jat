@@ -1,0 +1,32 @@
+import io
+import text
+
+#perguntas no terminal (ou respostas vindas de um pipe)
+
+string nome = text.name(io.input("Qual o seu nome? "))
+int idade = text.to_int(io.input("Qual a sua idade? "))
+int futura = idade + 10
+println("Ola, {nome}! Daqui a 10 anos voce tera {futura} anos.")
+
+#lendo linhas ate o fim da entrada
+
+println("Digite palavras (uma por linha, linha vazia termina):")
+string[] palavras = []
+while not io.eof()
+    string linha = text.trim(io.read_line())
+    if len(linha) == 0
+        break
+    palavras.append(linha)
+int total = len(palavras)
+string lista = text.join(palavras, ", ")
+println("{total} palavras: {lista}")
+
+io.eprintln("isto vai para a saida de erro (stderr)")
+
+#sem escrever os tipos
+
+maior = ""
+for p in palavras
+    if len(p) > len(maior)
+        maior = p
+println("maior palavra: {maior}")

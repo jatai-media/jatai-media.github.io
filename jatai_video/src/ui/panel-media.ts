@@ -54,6 +54,11 @@ export function renderMedia(body?) {
         select({ media: m.id, clip: -1 }, ["media"]);
       });
       card.addEventListener("dblclick", () => addToTimeline(m));
+      card.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        select({ media: m.id, clip: -1 }, ["media"]);
+        menuDoCartao(m, e.clientX, e.clientY);
+      });
       card.addEventListener("pointerdown", (e) => beginMediaDrag(e, m));
 
       // O x nao seleciona nem arrasta: ele so tira. Sem parar o apertar aqui,
@@ -196,6 +201,16 @@ export function removeMedia(id?, x?, y?) {
     { label: "Tirar do projeto e da linha do tempo",
       action: () => dropMedia(m, used) },
     { label: "Deixar como esta" },
+  ]);
+}
+
+// O menu do botao direito num arquivo da cesta. (O id para scripts nao e do
+// arquivo: e de cada clipe, na linha do tempo - ver src/jatai/ids.ts.)
+function menuDoCartao(m?, x?, y?) {
+  showMenu(x, y, [
+    { titulo: m.name },
+    { label: "Para a linha do tempo", action: () => addToTimeline(m) },
+    { label: "Tirar do projeto...", action: () => removeMedia(m.id, x, y) },
   ]);
 }
 

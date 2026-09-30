@@ -1,0 +1,21 @@
+# Vai para o git so o codigo-fonte da linguagem. O que se compila ou se baixa
+# fica fora - e vai no zip de download (release do GitHub):
+
+# o GCC portatil do -build (219 MB): src/toolchain/LEIAME.md diz como montar
+src/toolchain/
+
+# o que o jatai compila: executaveis, bibliotecas nativas e as saidas do -build
+*.exe
+*.dll
+*.so
+library/*/bin/
+build/
+
+# a extensao empacotada (o .vsix sai de extensao/ com o vsce)
+*.vsix
+extensao/node_modules/
+
+# o site do Jatai (ide/) tem os seus
+ide/node_modules/
+ide/dist/
+ide/public/jatai.wasm

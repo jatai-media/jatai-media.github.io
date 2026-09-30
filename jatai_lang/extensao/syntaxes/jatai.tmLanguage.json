@@ -1,0 +1,312 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Jatai",
+  "scopeName": "source.jatai",
+  "fileTypes": [
+    "jat"
+  ],
+  "patterns": [
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#string_triple"
+    },
+    {
+      "include": "#string"
+    },
+    {
+      "include": "#char"
+    },
+    {
+      "include": "#import"
+    },
+    {
+      "include": "#function_definition"
+    },
+    {
+      "include": "#keyword_fn"
+    },
+    {
+      "include": "#type"
+    },
+    {
+      "include": "#modifier"
+    },
+    {
+      "include": "#keyword_control"
+    },
+    {
+      "include": "#keyword_logical"
+    },
+    {
+      "include": "#boolean"
+    },
+    {
+      "include": "#builtin"
+    },
+    {
+      "include": "#method"
+    },
+    {
+      "include": "#qualified_call"
+    },
+    {
+      "include": "#function_call"
+    },
+    {
+      "include": "#number"
+    },
+    {
+      "include": "#operator"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.jatai",
+      "match": "#.*$"
+    },
+    "string": {
+      "name": "string.quoted.double.jatai",
+      "comment": "interpolacao: {expressao}, comecando com um nome; outra chave e texto literal",
+      "begin": "\"",
+      "end": "\"|$",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.jatai"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.jatai"
+        }
+      },
+      "patterns": [
+        {
+          "name": "meta.interpolation.jatai",
+          "contentName": "meta.embedded.expression.jatai",
+          "begin": "\\{(?=[A-Za-z_])",
+          "end": "\\}",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.begin.jatai"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.end.jatai"
+            }
+          },
+          "patterns": [
+            {
+              "include": "$self"
+            }
+          ]
+        },
+        {
+          "include": "#escape"
+        }
+      ]
+    },
+    "char": {
+      "name": "string.quoted.single.jatai",
+      "match": "'(?:\\\\[ntr\\\\\"']|[^'\\\\])'",
+      "captures": {
+        "0": {
+          "patterns": [
+            {
+              "include": "#escape"
+            }
+          ]
+        }
+      }
+    },
+    "escape": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.jatai",
+          "match": "\\\\[ntr\\\\\"']"
+        },
+        {
+          "name": "invalid.illegal.escape.jatai",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "function_definition": {
+      "comment": "[extern] tipo nome(...) / tipo[] nome(...) / void nome(...) / fn nome(...) no inicio da linha",
+      "match": "^\\s*(?:(extern)\\s+)?(int|double|string|char|bool|void|fn)(\\[\\])?\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+      "captures": {
+        "1": {
+          "name": "storage.modifier.jatai"
+        },
+        "2": {
+          "name": "storage.type.jatai"
+        },
+        "3": {
+          "name": "punctuation.definition.array.jatai"
+        },
+        "4": {
+          "name": "entity.name.function.jatai"
+        }
+      }
+    },
+    "type": {
+      "name": "storage.type.jatai",
+      "match": "\\b(int|double|string|char|bool|void)\\b"
+    },
+    "modifier": {
+      "name": "storage.modifier.jatai",
+      "match": "\\b(const|extern|global)\\b"
+    },
+    "keyword_control": {
+      "name": "keyword.control.jatai",
+      "match": "\\b(if|elif|else|while|for|in|return|break|continue)\\b"
+    },
+    "keyword_logical": {
+      "name": "keyword.operator.logical.jatai",
+      "match": "\\b(and|or|not)\\b"
+    },
+    "boolean": {
+      "name": "constant.language.boolean.jatai",
+      "match": "\\b(true|false)\\b"
+    },
+    "builtin": {
+      "name": "support.function.builtin.jatai",
+      "match": "\\b(print|println|len|range)\\b(?=\\s*\\()"
+    },
+    "method": {
+      "comment": "array.append(x)",
+      "match": "(\\.)\\s*(append)\\b(?=\\s*\\()",
+      "captures": {
+        "1": {
+          "name": "punctuation.accessor.jatai"
+        },
+        "2": {
+          "name": "support.function.method.jatai"
+        }
+      }
+    },
+    "function_call": {
+      "name": "entity.name.function.call.jatai",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()"
+    },
+    "number": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.jatai",
+          "match": "\\b\\d+\\.\\d+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.jatai",
+          "match": "\\b\\d+\\b"
+        }
+      ]
+    },
+    "operator": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.jatai",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.assignment.jatai",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arithmetic.jatai",
+          "match": "[+\\-*/%]"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.separator.comma.jatai",
+          "match": ","
+        },
+        {
+          "name": "punctuation.section.parens.jatai",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.section.brackets.jatai",
+          "match": "[\\[\\]]"
+        }
+      ]
+    },
+    "import": {
+      "comment": "import nome",
+      "match": "^\\s*(import)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.import.jatai"
+        },
+        "2": {
+          "name": "entity.name.namespace.jatai"
+        }
+      }
+    },
+    "qualified_call": {
+      "comment": "biblioteca.funcao(...) -- .append e metodo de array, nao biblioteca",
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(\\.)(?!append\\b)([A-Za-z_][A-Za-z0-9_]*)(?=\\s*\\()",
+      "captures": {
+        "1": {
+          "name": "entity.name.namespace.jatai"
+        },
+        "2": {
+          "name": "punctuation.accessor.jatai"
+        },
+        "3": {
+          "name": "entity.name.function.call.jatai"
+        }
+      }
+    },
+    "string_triple": {
+      "name": "string.quoted.triple.jatai",
+      "comment": "\"\"\"...\"\"\": multilinha e crua (sem escapes); {{expressao}} interpola, chave simples e texto",
+      "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.jatai"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.jatai"
+        }
+      },
+      "patterns": [
+        {
+          "name": "meta.interpolation.jatai",
+          "contentName": "meta.embedded.expression.jatai",
+          "begin": "\\{\\{\\s*(?=[A-Za-z_])",
+          "end": "\\s*\\}\\}",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.begin.jatai"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.end.jatai"
+            }
+          },
+          "patterns": [
+            {
+              "include": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    "keyword_fn": {
+      "name": "storage.type.function.jatai",
+      "match": "\bfn\b"
+    }
+  }
+}

@@ -130,6 +130,18 @@
   .tile.acao { cursor: pointer; }
   .tile.acao:hover { border-color: var(--accent-dim); color: var(--accent); }
 
+  /* painel de plugins */
+  .pl-topo { padding-top: 8px; }
+  .pl-linha { padding-bottom: 2px; }
+  .pl-pasta { color: var(--muted); font-size: 11.5px; flex: 1 1 120px; min-width: 0;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-dica { padding: 6px 12px 10px; color: var(--dim); font-size: 11.5px;
+             line-height: 1.45; }
+  .pl-msg-erro { color: #ff9aa6; white-space: pre-wrap; }
+  .tile.pl-erro { border-color: #6b2a33; color: #ff9aa6; cursor: help; }
+  .tx-row.pl-coluna { flex-direction: column; align-items: stretch; }
+  .tx-row.pl-coluna .tx-area { width: 100%; margin: 0; }
+
   /* reprodutor: a area de visao, dentro da barra de transporte */
   .canvasbar { display: flex; align-items: center; gap: 6px; min-width: 0;
                flex: 0 1 auto; }
@@ -175,6 +187,33 @@
                    object-fit: contain; display: block;
                    transform-origin: 50% 50%; -webkit-user-drag: none; }
   .vid-layer img[hidden] { display: none; }
+  /* Os plugins: um canvas por clipe, cobrindo a tela inteira. Como os <img>,
+     cada um leva o numero da pilha; a caixa nao tem z-index proprio. */
+  .pl-layer { position: absolute; inset: 0; pointer-events: none; }
+  .pl-layer canvas { position: absolute; inset: 0; width: 100%; height: 100%;
+                     display: block; }
+  /* A camada que um filtro de camada (chroma key) substitui: ela continua la,
+     e e dela que o filtro le a imagem, mas quem aparece e a saida do filtro. */
+  .sob-filtro { visibility: hidden !important; }
+  /* O conta-gotas: uma capa sobre a tela inteira, acima de tudo. */
+  .contagotas { position: absolute; inset: 0; z-index: 2000; cursor: crosshair; }
+  .contagotas-dica { position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+                     background: #000c; color: #fff; font-size: 12px; padding: 4px 10px;
+                     border-radius: 4px; pointer-events: none; white-space: nowrap; }
+  .contagotas-cor { position: absolute; display: flex; align-items: center; gap: 6px;
+                    background: #000d; color: #fff; font: 11px/1 "Cascadia Mono", Consolas, monospace;
+                    padding: 4px 6px; border-radius: 4px; pointer-events: none; }
+  .contagotas-cor i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #fff8; }
+  /* A lista de cores de um parametro "cores" (chroma key com varias cores). */
+  .pl-cores { display: flex; flex-wrap: wrap; gap: 5px; min-height: 22px; align-items: center; }
+  .pl-cor { display: inline-flex; align-items: center; gap: 3px; padding: 2px 3px 2px 2px;
+            border: 1px solid var(--line); border-radius: 5px; background: #0e1117; }
+  .pl-cor i { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #fff3; }
+  .pl-cor b { color: var(--dim); font-weight: 400; cursor: pointer; padding: 0 3px; line-height: 1; }
+  .pl-cor b:hover { color: #ff8a9a; }
+  .pl-cores-vazio { color: var(--dim); font-size: 11.5px; }
+  .pl-cores-botoes { display: flex; align-items: center; gap: 6px; }
+  .pl-cores-conta { color: var(--dim); font-size: 11px; }
   .screen-msg { padding: 12px; }
 
   /* A moldura da imagem escolhida. Leva a mesma transformacao do <img>, entao
@@ -184,7 +223,10 @@
      arrastar a imagem. So as alcas e que pegam o ponteiro. */
   .im-sel { position: absolute; pointer-events: none;
             outline: 1px dashed var(--accent); outline-offset: 0;
-            transform-origin: 50% 50%; }
+            transform-origin: 50% 50%;
+            /* Acima de toda camada (cada uma leva o numero da pilha): um plugin
+               cobre a tela inteira, e sem isto tapava a moldura. */
+            z-index: 1000; }
   .im-grip { position: absolute; width: 12px; height: 12px; border-radius: 3px;
              background: var(--accent); border: 1px solid #00000066;
              pointer-events: auto; }
@@ -235,7 +277,8 @@
         pointer-events: auto; cursor: move; text-align: center;
         line-height: 1.15; white-space: pre;
         display: flex; align-items: center; justify-content: center;
-        font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+        /* a familia vem de cada texto (ui/fontes.ts); esta e so a reserva */
+        font-family: "Inter Variable", sans-serif;
         border-radius: 3px; user-select: none; -webkit-user-select: none; }
   .tx.on { outline: 1px dashed var(--accent); outline-offset: 3px; }
   .tx.moving { outline-style: solid; }

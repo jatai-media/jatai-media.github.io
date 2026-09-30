@@ -1,0 +1,41 @@
+{
+  "name": "jatai-video-jatai",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run jatai:wasm && tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "jatai:wasm": "node jatai/build-wasm.mjs",
+    "server:build": "g++ -std=c++20 -O2 -static server.cpp -o server.exe -lws2_32",
+    "server": ".\\server.exe 8090 dist",
+    "live": "vite build && concurrently -k -n build,server -c yellow,cyan \"vite build --watch\" \"npm:server\"",
+    "build:hub": "npm run jatai:wasm && tsc --noEmit && vite build --base /jatai_video/ --outDir ../dist/jatai_video --emptyOutDir"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@yowasp/clang": "^22.0.0-git20542-10",
+    "concurrently": "^10.0.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "@fontsource-variable/dancing-script": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/lora": "^5.3.0",
+    "@fontsource-variable/merriweather": "^5.3.0",
+    "@fontsource-variable/montserrat": "^5.3.0",
+    "@fontsource-variable/oswald": "^5.3.0",
+    "@fontsource-variable/playfair-display": "^5.3.0",
+    "@fontsource-variable/roboto": "^5.3.0",
+    "@fontsource-variable/roboto-mono": "^5.3.0",
+    "@fontsource/anton": "^5.3.0",
+    "@fontsource/bebas-neue": "^5.3.0",
+    "@fontsource/pacifico": "^5.3.0",
+    "@fontsource/permanent-marker": "^5.3.0",
+    "@fontsource/poppins": "^5.3.0",
+    "mediabunny": "^1.60.0"
+  }
+}

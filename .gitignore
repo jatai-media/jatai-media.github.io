@@ -4,3 +4,6 @@ dist/
 .DS_Store
 server.exe
 server
+
+# O jatai.wasm do editor de video e compilado a partir de jatai_lang/ (npm run jatai:wasm)
+jatai_video/public/jatai.wasm

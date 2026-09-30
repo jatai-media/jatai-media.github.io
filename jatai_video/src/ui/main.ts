@@ -10,6 +10,7 @@ import { mostraInicio, criaProjeto } from "./tela-inicial";
 import { closeHush } from "./panel-timeline";
 import { keyOf, shortcutFor, loadShortcuts, closeKeys, captureKey } from "./atalhos";
 import { sanitize, loadHush, loadCanvas, adoptNewPanels } from "./prefs";
+import { iniciaPlugins } from "../plugins/plugins";
 
 $("btnMenu").addEventListener("click", abreMenuPrincipal);
 $("inicioCriar").addEventListener("click", criaProjeto);
@@ -73,6 +74,8 @@ document.addEventListener("keydown", (e) => {
   // primeira coisa que aparece, e o dock so e montado quando houver projeto.
   await mostraInicio();
   ligaAutossalva();
+  // A pasta de plugins da ultima vez, se o navegador ainda der acesso sem perguntar.
+  iniciaPlugins().catch(() => {});
 
   // O modelo que recorta o fundo esta instalado? Perguntado uma vez, aqui: o
   // painel de Efeitos precisa saber disso para dizer o que falta, e nao para

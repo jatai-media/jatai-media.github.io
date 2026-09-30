@@ -26,6 +26,11 @@ const ptBR: Messages = {
         description: 'Monte vídeos com cortes, camadas, texto e trilhas de som, e exporte em MP4.',
         open: 'Abrir editor',
       },
+      lang: {
+        name: 'Linguagem Jatai',
+        description: 'Escreva e rode programas em Jatai no navegador, ou baixe a linguagem para o seu computador.',
+        open: 'Abrir editor',
+      },
     },
   },
   editor: {

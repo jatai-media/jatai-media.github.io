@@ -11,7 +11,10 @@ import { seek, seekCommit, stopPlay, tick } from "./panel-player";
 import { VOL_MIN, VOL_MAX, dbToGain, lineToDb, envLineAt, envDbAt, envGainAt, sendVolume } from "./panel-audio";
 import { isFrameClip, ANIM_EPS, animPts, hasAnim, animTime, tfAt, animKey, deleteAnimPoint, pousaAnim, afterAnim, spreadTF, animaCamadas } from "./panel-imagem";
 import { TEXT_MIN_LEN, freeTextTrack, isText } from "./texto";
+import { isPlugin } from "../plugins/plugins";
 import { strip, saveHush } from "./prefs";
+import { perguntaTexto } from "./dialogo";
+import { idDoClipe, problemaDoId } from "../jatai/ids";
 
 export function projectEnd() {
   return state.clips.reduce((a, c) => (c.off ? a : Math.max(a, c.start + c.len)), 0);
@@ -332,7 +335,8 @@ export function blockEdge(c?) {
 export function buildClip(c?) {
   const el = document.createElement("div");
   el.dataset.clip = c.id;
-  el.className = "clip " + c.kind + (isPicked(c.id) ? " on" : "") +
+  el.className = "clip " + c.kind + (c.plugin && c.plugin.filtro ? " filtro" : "") +
+                 (isPicked(c.id) ? " on" : "") +
                  (c.off ? " off" : "") + blockEdge(c);
   el.style.left = (c.start * state.zoom) + "px";
   el.style.width = Math.max(14, c.len * state.zoom) + "px";
@@ -344,6 +348,17 @@ export function buildClip(c?) {
   const meio = el.className.indexOf(" blk") >= 0 && el.className.indexOf("blk-a") < 0;
   el.querySelector(".cl").textContent = meio ? "" : c.name;
   el.title = c.name;
+  // O id pelo qual um script Jatai chama este clipe, a vista antes do nome.
+  const jid = idDoClipe(c);
+  if (jid && !meio) {
+    const tag = document.createElement("b");
+    tag.className = "cl-id";
+    tag.textContent = jid;
+    el.querySelector(".cl").prepend(tag);
+  }
+  // O id de script e do clipe: foto e video o oferecem no menu da animacao,
+  // o som no da linha de volume, e o texto (e o resto do clipe de som) aqui.
+  if (!isFrameClip(c)) wireIdMenu(el, c);
   drawStrip(el, c);
   drawWave(el, c);
   // A faixa dos pontos de animacao fica no alto, fora do caminho da onda: sao
@@ -1402,7 +1417,7 @@ export function pasteClip() {
   // Um texto nao vem de arquivo nenhum - o que ele precisa para existir esta
   // todo dentro da copia. So a midia depende de o arquivo continuar no
   // projeto, e era esta pergunta, feita a todos, que recusava colar texto.
-  if (!isText(src) && !state.media.some((m) => m.id === src.media)) {
+  if (!isText(src) && !isPlugin(src) && !state.media.some((m) => m.id === src.media)) {
     toast("O arquivo daquele clipe ja saiu do projeto.");
     return;
   }
@@ -1446,6 +1461,8 @@ export function pasteClip() {
     off: false, home: 0, back: 0,
     points: (src.points || []).map((p) => ({ id: state.nextId++, t: p.t, db: p.db })),
   });
+  // Os parametros de um plugin sao da copia: colada duas vezes, cada uma muda sozinha.
+  if (src.plugin) c.plugin = JSON.parse(JSON.stringify(src.plugin));
 
   // A animacao vai junto, com pontos proprios: colada duas vezes, cada copia
   // tem de poder ser mexida sem mexer na outra.
@@ -1461,6 +1478,11 @@ export function pasteClip() {
   // mexer num mexeria no outro, e ninguem entenderia por que.
   if (src.texto) c.texto = Object.assign({}, src.texto);
   if (src.tf) c.tf = Object.assign({}, src.tf);
+  // A copia e um elemento novo: sem o id de script do original (dois clipes
+  // com o mesmo id seriam o mesmo para o script) e sem o que um script tinha
+  // guardado do texto original para desfazer.
+  delete c.jid;
+  delete c.jtexto;
 
   state.clips.push(c);
   // Empurrar quem estiver no lugar e coisa de midia; o texto ja caiu numa
@@ -2356,6 +2378,8 @@ export function wireVolume(canvas?, c?) {
     items.push({ label: "Apagar todos os pontos", disabled: !pts.length,
                  action: () => { remember(); c.points = []; state.pickedPoint = 0;
                                  refresh(["timeline", "audio"]); sendVolume(c); } });
+    // Foto e video com som ja oferecem o id no menu da animacao.
+    if (!isFrameClip(c)) items.push({ sep: true }, ...idItems(c));
 
     showMenu(ev.clientX, ev.clientY, items);
   });
@@ -2475,6 +2499,42 @@ export function animLaneTime(el?, ev?, c?) {
 
 // O menu do botao direito, pendurado no CLIPE inteiro e nao so na faixa fina
 // la em cima: mirar onze pixels para inserir um ponto e pedir demais da mao.
+// O id que o script usa para chamar ESTE clipe (editor.zoom("gato", ...)). E
+// do clipe, e nao do arquivo: a mesma foto duas vezes na linha do tempo sao
+// dois elementos, cada um com o seu id. Os itens entram no menu do botao
+// direito de todo clipe.
+export function idItems(c?) {
+  const oQue = isText(c) ? "este texto" : "este clipe";
+  const exemplo = isText(c) ? "titulo" : c.kind === "audio" ? "trilha" : "gato";
+  return [
+    { label: c.jid ? "Trocar o id (" + c.jid + ")..." : "Atribuir id para scripts...",
+      action: async () => {
+        const v = await perguntaTexto("Id para scripts",
+          "O script Jatai chama " + oQue + " por este nome. Use letras, numeros e _.",
+          { botao: "Atribuir", valor: c.jid || "", placeholder: exemplo });
+        if (v == null) return;
+        const id = String(v).trim();
+        const problema = id ? problemaDoId(id, c.id) : "";
+        if (problema) { toast(problema); return; }
+        remember();
+        if (id) c.jid = id; else delete c.jid;
+        refresh(["timeline"]);
+      } },
+    { label: "Tirar o id", disabled: !c.jid,
+      action: () => { remember(); delete c.jid; refresh(["timeline"]); } },
+  ];
+}
+
+// O botao direito num clipe sem menu proprio (texto, e a parte do clipe de som
+// fora da linha de volume): so o id.
+function wireIdMenu(el?, c?) {
+  el.addEventListener("contextmenu", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    showMenu(ev.clientX, ev.clientY, [{ titulo: c.name }, ...idItems(c)]);
+  });
+}
+
 // Na faixa de som o menu do volume chega primeiro e para ali - sao duas linhas
 // diferentes, e cada uma responde onde ela e desenhada.
 export function wireAnimMenu(clipEl?, c?) {
@@ -2511,6 +2571,7 @@ export function wireAnimMenu(clipEl?, c?) {
     items.push({ label: "Apagar a animacao", disabled: !hasAnim(c),
                  action: () => { remember(); pousaAnim(c); state.pickedAnim = 0;
                                  spreadTF(c); afterAnim(); } });
+    items.push({ sep: true }, ...idItems(c));
 
     showMenu(ev.clientX, ev.clientY, items);
   });
@@ -2846,7 +2907,8 @@ export function clipLen(m?) {
   return m.duration > 0 ? m.duration : 10;
 }
 
-export function addToTimeline(m?, trackId?, at?, nova?, onde?) {
+// `extra`: campos a mais do clipe - e por onde um plugin entra (ver panel-plugins.ts).
+export function addToTimeline(m?, trackId?, at?, nova?, onde?, extra?) {
   remember();
   const want = m.kind === "audio" ? "audio" : "video";
   const dura = clipLen(m);
@@ -2886,6 +2948,7 @@ export function addToTimeline(m?, trackId?, at?, nova?, onde?) {
   const clip = { id: state.nextId++, track: track.id, start: start,
                  len: dura, name: m.name, kind: m.kind, media: m.id,
                  inPoint: 0, db: 0 };
+  if (extra) Object.assign(clip, extra);
   state.clips.push(clip);
   select({ clip: clip.id, media: -1 }, ["media"]);
 }
@@ -2929,10 +2992,12 @@ export function splitPoints(c?, at?) {
   if (!pts.length) return [[], []];
 
   const seam = envDbAt(c, at);
+  // o dono (o script que criou o ponto, ver editor-lib.ts) vai junto
+  const marca = (p) => (p.jdono ? { jdono: p.jdono } : {});
   const left = pts.filter((p) => p.t < at - 1e-4)
-                  .map((p) => ({ id: state.nextId++, t: p.t, db: p.db }));
+                  .map((p) => ({ id: state.nextId++, t: p.t, db: p.db, ...marca(p) }));
   const right = pts.filter((p) => p.t > at + 1e-4)
-                   .map((p) => ({ id: state.nextId++, t: p.t - at, db: p.db }));
+                   .map((p) => ({ id: state.nextId++, t: p.t - at, db: p.db, ...marca(p) }));
   left.push({ id: state.nextId++, t: at, db: seam });
   right.unshift({ id: state.nextId++, t: 0, db: seam });
   return [left, right];
@@ -2947,8 +3012,10 @@ export function splitAnim(c?, at?) {
   if (!pts) return [null, null];
 
   const v = tfAt(c, at);
+  // o dono (o script que criou o ponto, ver editor-lib.ts) vai junto
   const copia = (p, dt) => ({ id: state.nextId++, t: p.t - dt, esc: p.esc,
-                              x: p.x, y: p.y, rot: p.rot, s: p.s || 0 });
+                              x: p.x, y: p.y, rot: p.rot, s: p.s || 0,
+                              ...(p.jdono ? { jdono: p.jdono } : {}) });
   // A curva da emenda e a do trecho que ela corta: cortar no meio de um
   // movimento suave nao pode endurecer nenhuma das duas metades.
   const antes = pts.filter((p) => p.t <= at).pop();
@@ -3015,7 +3082,18 @@ export function splitClipAt(c?, at?) {
   // clipes daqui em diante, e mexer no de um nao pode mexer no do outro.
   if (isText(c)) right.texto = Object.assign({}, c.texto);
   if (c.tf) right.tf = Object.assign({}, c.tf);
+  // Um plugin cortado continua o desenho de onde parou (t0), em vez de repetir
+  // a entrada na metade da direita.
+  if (c.plugin) {
+    right.plugin = JSON.parse(JSON.stringify(c.plugin));
+    right.plugin.t0 = (c.plugin.t0 || 0) + cut;
+  }
   if (ra) right.anim = ra;
+  // As duas metades continuam a mesma cena: o id de script vai junto (o script
+  // usa a metade que esta no instante do relogio dele), e o que um script
+  // guardou do texto para desfazer tambem.
+  if (c.jid) right.jid = c.jid;
+  if (c.jtexto) right.jtexto = JSON.parse(JSON.stringify(c.jtexto));
 
   setPieces(right, pDir);
   setPieces(c, pEsq);

@@ -27,6 +27,7 @@
 import { $, api, forgetHistory, clipSourceAt, toast, state } from "./core";
 import { pergunta } from "./dialogo";
 import { setCanvas } from "./panel-player";
+import { migraIdsDeMidia } from "../jatai/ids";
 
 export const PROJETO_VERSAO = 1;
 
@@ -160,9 +161,11 @@ export async function abrirProjeto(id?, nome?) {
 
   const mapa = new Map();
   const sumiram = [];
+  const idsAntigos = new Map<number, string>(); // id de script no arquivo (projetos de antes)
   midias.forEach((m, i) => {
     const novo = (volta.ids || [])[i] || 0;
     mapa.set(m.id, novo);
+    if (novo && m.jid) idsAntigos.set(novo, m.jid);
     if (!novo) sumiram.push(m.nome || m.caminho);
   });
 
@@ -176,6 +179,9 @@ export async function abrirProjeto(id?, nome?) {
     }
     return c;
   });
+
+  // o id de script agora e do clipe: o que estava no arquivo passa para os clipes dele
+  migraIdsDeMidia(idsAntigos);
 
   state.nextId = p.nextId || (state.clips.reduce((a, c) => Math.max(a, c.id), 0) + 1);
   state.nextGroup = p.nextGroup || 1;

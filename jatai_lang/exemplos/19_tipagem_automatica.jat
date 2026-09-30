@@ -1,0 +1,77 @@
+import text
+
+#tipagem automatica: o tipo pode ser omitido e e deduzido do valor.
+#continua sendo tipagem estatica: o programa roda com a mesma velocidade,
+#e os tipos escritos continuam valendo onde voce quiser deixa-los explicitos
+
+#variaveis: o valor define o tipo
+nome = "maria da silva"
+idade = 31
+altura = 1.68
+ativa = true
+println("{text.name(nome)}, {idade} anos, {altura} m, ativa: {ativa}")
+
+#o tipo fica fixo: depois de "idade = 31", idade = "x" e erro
+idade = idade + 1
+
+#const e global tambem sem tipo (funcoes so enxergam globais)
+const LIMITE = 3
+global const TAXA = 0.1
+global total_vendas = 0.0
+
+#variavel criada dentro de if/else continua valendo depois (como no Python)
+if idade >= 18
+    situacao = "maior de idade"
+else
+    situacao = "menor de idade"
+println(situacao)
+
+#listas: [] vazio recebe o tipo no primeiro append
+compras = []
+compras.append("pao")
+compras.append("cafe")
+for i in range(LIMITE)
+    compras.append("item {i}")
+precos = [4.5, 12.0]
+println("{len(compras)} itens: {text.join(compras, ", ")}")
+
+#funcoes com fn: parametros e retorno sem tipo.
+#cada chamada com tipos diferentes gera uma versao propria da funcao
+fn maior(lista)
+    m = lista[0]
+    for v in lista
+        if v > m
+            m = v
+    return m
+
+println("maior int: {maior([3, 9, 2])}, maior double: {maior(precos)}")
+
+fn vender(valor)
+    total_vendas = total_vendas + valor * (1.0 + TAXA)
+
+vender(100.0)
+vender(50.0)
+println("vendas com taxa: {total_vendas}")
+
+#recursao: o primeiro return (caso base) define o tipo de retorno
+fn fatorial(n)
+    if n <= 1
+        return 1
+    return n * fatorial(n - 1)
+println("10! = {fatorial(10)}")
+
+#funcao sem tipo passada como valor: os tipos vem da assinatura esperada
+int aplicar(int(int) f, int x)
+    return f(x)
+
+fn quadrado(x)
+    return x * x
+println("aplicar(quadrado, 12) = {aplicar(quadrado, 12)}")
+
+#e da para misturar: tipos escritos onde importa, sem tipo no resto
+double media(double[] valores)
+    soma = 0.0
+    for v in valores
+        soma = soma + v
+    return soma / double(len(valores))
+println("media: {media(precos)}")

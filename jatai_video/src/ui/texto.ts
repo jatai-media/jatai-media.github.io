@@ -23,6 +23,8 @@ import { refresh } from "./dock-view";
 import { screenIn, screenSize, seekCommit } from "./panel-player";
 import { ROT_MIN, ROT_MAX } from "./panel-imagem";
 import { afterClipChange, addTrack, trackBusy, beginDropDrag } from "./panel-timeline";
+import { FONTES, FONTE_PADRAO, familiaCss } from "./fontes";
+import { refazFiltros } from "../plugins/filtros";
 
 export const TEXT_CAIXA_MIN = 0.02;   // fracao da area de visao
 
@@ -93,6 +95,7 @@ export function addText(modelo?, at?, trackId?, novaPista?, posicao?, onde?) {
       y: posicao ? clamp(posicao.y, 0, 1) : modelo.y,
       tam: modelo.tam, rot: 0,
       cor: modelo.cor, fundo: modelo.fundo || "", peso: modelo.peso,
+      fonte: modelo.fonte || FONTE_PADRAO,
     },
   };
   state.clips.push(c);
@@ -221,7 +224,7 @@ export function textLayerKey(lista?, alt?) {
          lista.map((c) => {
     const t = c.texto;
     return [c.id, c.track, t.txt, t.x.toFixed(4), t.y.toFixed(4), t.tam.toFixed(4),
-            t.larg || "", t.alt || "", txRot(t), t.cor, t.fundo, t.peso].join("~");
+            t.larg || "", t.alt || "", txRot(t), t.cor, t.fundo, t.peso, t.fonte || ""].join("~");
   }).join(";");
 }
 
@@ -241,6 +244,8 @@ export function paintTextLayer(raiz?) {
 
   layer.innerHTML = "";
   lista.forEach((c) => layer.appendChild(buildTextBox(c, box)));
+  // um filtro acima dos textos precisa do texto novo
+  refazFiltros();
 }
 
 // Uma caixa de texto na tela. As alcas - o contorno e o punho do canto - so
@@ -265,6 +270,7 @@ export function buildTextBox(c?, box?) {
   el.style.height = t.alt ? (t.alt * 100) + "%" : "auto";
   el.style.fontSize = (t.tam * alt).toFixed(2) + "px";
   el.style.fontWeight = String(t.peso);
+  el.style.fontFamily = familiaCss(t.fonte);
   // O -50% e o que ancora a caixa pelo centro; o giro vem depois dele, para a
   // caixa rodar em torno de si mesma e nao descrever um arco pela tela.
   el.style.transform = "translate(-50%, -50%) rotate(" + txRot(t).toFixed(2) + "deg)";
@@ -569,6 +575,12 @@ export function renderTexto(body?) {
   wrap.innerHTML =
     '<div class="section">Texto escolhido</div>' +
     '<textarea class="tx-area" id="txArea" rows="3" spellcheck="false"></textarea>' +
+    // A fonte vai DENTRO do programa (ui/fontes.ts): a mesma em qualquer
+    // sistema, na previa e no arquivo exportado.
+    '<div class="tx-row">' +
+      '<label>Fonte</label>' +
+      '<select id="txFonte" class="nar-voz"></select>' +
+    '</div>' +
     '<div class="tx-row">' +
       '<label>Tamanho</label>' +
       '<input type="range" id="txTam" min="' + Math.round(TEXT_TAM_MIN * 100) +
@@ -629,6 +641,33 @@ export function renderTexto(body?) {
 
   const area = wrap.querySelector("#txArea");
   area.value = t.txt;
+
+  // Cada opcao escrita na propria fonte, agrupada pelo estilo.
+  const selFonte = wrap.querySelector("#txFonte");
+  const grupos = new Map();
+  FONTES.forEach((f) => {
+    if (!grupos.has(f.grupo)) {
+      const g = document.createElement("optgroup");
+      g.label = f.grupo;
+      grupos.set(f.grupo, g);
+      selFonte.appendChild(g);
+    }
+    const o = document.createElement("option");
+    o.value = f.id;
+    o.textContent = f.nome;
+    o.style.fontFamily = familiaCss(f.id);
+    grupos.get(f.grupo).appendChild(o);
+  });
+  selFonte.value = t.fonte || FONTE_PADRAO;
+  selFonte.style.fontFamily = familiaCss(t.fonte);
+  selFonte.addEventListener("change", () => {
+    remember();
+    t.fonte = selFonte.value;
+    selFonte.style.fontFamily = familiaCss(t.fonte);
+    txKey = "";
+    paintTextLayer();
+    refresh(["props"]);
+  });
 
   // Digitar muda a tela na hora, mas o historico so guarda o antes de cada
   // visita ao campo: uma entrada por letra encheria o Ctrl+Z de nada.

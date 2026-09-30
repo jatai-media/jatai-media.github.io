@@ -23,6 +23,8 @@ import { doImport } from "./panel-media";
 import { voltaAoInicio } from "./tela-inicial";
 import { SHORTCUTS, keyLabel, openKeys } from "./atalhos";
 import { resetLayout } from "./prefs";
+import { menuScript } from "../jatai/ponte";
+import { plugins, abrePastaPlugins, reabrePastas, recarregaPlugins, precisaReabrir } from "../plugins/plugins";
 
 export function teclaDe(id?) {
   const a = SHORTCUTS.find((s) => s.id === id);
@@ -71,6 +73,19 @@ export function menuPrincipal() {
         { sep: true },
         { label: "Restaurar layout", action: resetLayout },
       ]) },
+
+    // Scripts Jatai: o editor abre numa guia propria; os salvos rodam daqui mesmo.
+    { label: "Script", sub: menuScript() },
+
+    // Plugins: pastas que se somam, cada uma com um plugin ou varios (ver
+    // src/plugins/plugins.ts).
+    { label: "Plugins", sub: [
+      { label: "Adicionar pasta de plugins...", action: abrePastaPlugins },
+      ...(precisaReabrir() ? [{ label: "Reabrir as pastas", action: () => reabrePastas() }] : []),
+      { label: "Recarregar plugins", action: recarregaPlugins, disabled: !plugins.pastas.length },
+      { sep: true },
+      { label: "Mostrar o painel Plugins", action: () => openTab("plugins") },
+    ] },
 
     { label: "Ajuda", sub: [
       { label: "Atalhos do teclado", action: () => openKeys($("btnMenu")) },

@@ -1,0 +1,100 @@
+#criando arrays
+
+int[] numeros = [10, 20, 30]
+string[] nomes = ["Ana", "Bruno", "Carla"]
+double[] notas = [7.5, 8.0, 9.5]
+string[] vazio = []
+
+#lendo e alterando pelo indice
+
+int primeiro = numeros[0]
+println("primeiro: {primeiro}")
+numeros[1] = 25
+int segundo = numeros[1]
+println("segundo alterado: {segundo}")
+
+#tamanho e append
+
+numeros.append(40)
+int tamanho = len(numeros)
+println("tamanho: {tamanho}")
+vazio.append("agora tem um")
+println(vazio[0])
+
+#percorrendo com for ... in
+
+for nome in nomes
+    println("ola, {nome}")
+
+double soma = 0.0
+for nota in notas
+    soma = soma + nota
+println("soma das notas: {soma}")
+
+#percorrendo pelo indice
+
+for i in range(len(numeros))
+    int n = numeros[i]
+    print("[{i}]={n} ")
+println("")
+
+#copia: arrays sao valores, alterar a copia nao muda o original
+
+int[] copia = numeros
+copia[0] = 999
+int original = numeros[0]
+int alterado = copia[0]
+println("original: {original}, copia: {alterado}")
+
+#arrays em funcoes
+
+int maior(int[] valores)
+    int m = valores[0]
+    for v in valores
+        if v > m
+            m = v
+    return m
+
+int[] quadrados(int n)
+    int[] r = []
+    for i in range(1, n + 1)
+        r.append(i * i)
+    return r
+
+int max = maior([3, 17, 8, 12])
+println("maior: {max}")
+
+int[] q = quadrados(5)
+for x in q
+    print("{x} ")
+println("")
+
+#len tambem funciona em string
+
+int letras = len("jatai")
+println("letras em jatai: {letras}")
+
+#sem escrever os tipos
+
+cores = ["azul", "verde"]
+cores.append("roxo")
+println("{len(cores)} cores, ultima: {cores[len(cores) - 1]}")
+
+#[] vazio: o tipo dos elementos vem do primeiro append
+pares = []
+for k in range(1, 11)
+    if k % 2 == 0
+        pares.append(k)
+for p in pares
+    print("{p} ")
+println("")
+
+zeros = [0.0] * 3
+zeros[1] = 2.5
+println("zeros: {zeros[0]} {zeros[1]} {zeros[2]}")
+
+#funcao sem tipo: serve para array de qualquer tipo
+fn pontas(lista)
+    return "{lista[0]}..{lista[len(lista) - 1]}"
+println(pontas(cores))
+println(pontas(pares))

@@ -16,7 +16,9 @@
 // montagem - a de cima vira um selo sobre a de baixo - e nao um acidente.
 import { refreshSelection, snapshot, rememberSnapshot, remember, clipSpeed, groupOf, clamp, capture, fmtTime, state } from "./core";
 import { refresh } from "./dock-view";
-import { screenIn, screenSize, videoLayers, clipUnderPlayhead, layerImg, requestPreview, paintPreview, seekCommit } from "./panel-player";
+import { screenIn, screenSize, videoLayers, camadasNaTela, clipUnderPlayhead, layerImg, requestPreview, paintPreview, seekCommit } from "./panel-player";
+import { isPlugin, isFiltro } from "../plugins/plugins";
+import { refazFiltros } from "../plugins/filtros";
 import { wheelTextTarget, wheelTextSize } from "./texto";
 import { VEL_MIN, VEL_MAX, setClipSpeed } from "./panel-timeline";
 
@@ -36,8 +38,11 @@ export const ROT_MAX = 180;
 
 export const TF_ZERO = { esc: 1, x: 0, y: 0, rot: 0 };
 
+// O que se enquadra: foto, video e plugin. Um plugin e um quadro inteiro,
+// transparente onde nao desenhou - e se move, gira e amplia como uma foto.
 export function isFrameClip(c?) {
-  return !!(c && c.media && (c.kind === "video" || c.kind === "imagem"));
+  return !!(c && ((c.media && (c.kind === "video" || c.kind === "imagem")) ||
+                  (isPlugin(c) && !isFiltro(c))));
 }
 
 export function clipTF(c?) {
@@ -235,10 +240,49 @@ export function tfTarget() {
 // De quem e o gesto feito NA TELA. Com varias camadas empilhadas, mover a de
 // cima nem sempre e o que se quer: escolhido um clipe que esta a vista, o
 // arrasto e dele. Sem escolha nenhuma, vale a da frente, que e a que se ve.
-export function tfDragTarget() {
-  const vis = videoLayers();
+//
+// Um plugin cobre a tela inteira, mas so e alvo ONDE ELE DESENHOU: uma tarja
+// no rodape nao pode roubar o arrasto do video que esta atras, no resto da
+// tela. Sem o ponto do gesto (`e`), ele nunca e alvo sem estar escolhido.
+export function tfDragTarget(e?, box?) {
+  const vis = camadasNaTela();
   if (!vis.length) return null;
-  return vis.find((c) => c.id === state.pickedClip) || vis[vis.length - 1];
+  const pick = vis.find((c) => c.id === state.pickedClip);
+  if (pick) return pick;
+  for (let i = vis.length - 1; i >= 0; i--) {
+    const c = vis[i];
+    if (!isPlugin(c)) return c;
+    if (e && box && tocaNaCamada(c, box, e.clientX, e.clientY)) return c;
+  }
+  return null;
+}
+
+// A parte da tela que a camada ocupa, em pixels da tela, antes do
+// enquadramento: o quadro encaixado de uma foto ou video, a area desenhada de
+// um plugin (medida pelo sandbox a cada quadro e guardada no proprio canvas).
+export function caixaDaCamada(el?, box?) {
+  const med = screenSize(box);
+  if (el && el.tagName === "CANVAS") {
+    const d = el.dataset;
+    if (!d.bw) return { x: 0, y: 0, w: med.w, h: med.h };
+    return { x: +d.bx * med.w, y: +d.by * med.h, w: +d.bw * med.w, h: +d.bh * med.h };
+  }
+  return quadroDesenhado(el, box);
+}
+
+// O ponto (da janela) cai dentro da camada, ja movida, girada e ampliada?
+export function tocaNaCamada(c?, box?, x?, y?) {
+  const el = layerImg(box, c.id);
+  if (!el) return false;
+  const q = caixaDaCamada(el, box);
+  const o = centroDaImagem(box, c);
+  const t = tfNow(c);
+  const a = (t.rot || 0) * Math.PI / 180;
+  const dx = x - o.x, dy = y - o.y;
+  // De volta para o eixo da camada: desfaz o giro e o zoom.
+  const lx = (dx * Math.cos(a) + dy * Math.sin(a)) / Math.max(1e-6, t.esc);
+  const ly = (-dx * Math.sin(a) + dy * Math.cos(a)) / Math.max(1e-6, t.esc);
+  return Math.abs(lx) <= q.w / 2 && Math.abs(ly) <= q.h / 2;
 }
 
 // O quadro ja chega encaixado na tela (contain). Daqui em diante e a folha de
@@ -250,6 +294,13 @@ export function applyTransform(img?, c?, box?) {
   // e o que a linha diz onde a agulha esta.
   const t = tfNow(c);
   const med = screenSize(box);
+  // Um plugin gira e cresce em torno do centro do que desenhou, e nao do
+  // centro da tela: senao uma tarja no rodape descreveria um arco pela tela.
+  const d = img.dataset;
+  if (d && d.bw) {
+    img.style.transformOrigin = ((+d.bx + +d.bw / 2) * 100).toFixed(2) + "% " +
+                                ((+d.by + +d.bh / 2) * 100).toFixed(2) + "%";
+  }
   // A ordem e lida da esquerda para a direita como uma sequencia de gestos:
   // leva a imagem para onde ela foi posta, gira em torno do proprio centro e
   // so entao amplia. Girar antes de mover faria a imagem descrever um arco em
@@ -287,9 +338,12 @@ export function quadroDesenhado(img?, box?) {
 export function pintaMoldura(raiz?) {
   const box = screenIn(raiz);
   if (!box) return;
+  // Quem chama isto acabou de mexer numa camada: um filtro acima dela precisa
+  // ver a mudanca (e refeito uma vez por quadro de tela, no maximo).
+  refazFiltros();
 
   const c = state.clips.find((x) => x.id === state.pickedClip);
-  const img = (isFrameClip(c) && videoLayers().some((v) => v.id === c.id))
+  const img = (isFrameClip(c) && camadasNaTela().some((v) => v.id === c.id))
       ? layerImg(box, c.id) : null;
 
   let sel = box.querySelector(".im-sel");
@@ -335,11 +389,13 @@ export function pintaMoldura(raiz?) {
   // alcas ficam do tamanho que foram feitas.
   const t = tfNow(c);
   const med = screenSize(box);
-  const q = quadroDesenhado(img, box);
+  const q = caixaDaCamada(img, box);
   const w = q.w * t.esc, h = q.h * t.esc;
 
-  sel.style.left = ((med.w - w) / 2).toFixed(1) + "px";
-  sel.style.top = ((med.h - h) / 2).toFixed(1) + "px";
+  // Centrada no centro da caixa - que numa foto e o centro da tela, e num
+  // plugin e o centro do que ele desenhou.
+  sel.style.left = (q.x + q.w / 2 - w / 2).toFixed(1) + "px";
+  sel.style.top = (q.y + q.h / 2 - h / 2).toFixed(1) + "px";
   sel.style.width = w.toFixed(1) + "px";
   sel.style.height = h.toFixed(1) + "px";
   sel.style.transform =
@@ -378,10 +434,13 @@ export function centroDaImagem(box?, c?) {
   const r = box.getBoundingClientRect();
   const med = screenSize(box);
   const t = tfNow(c);
-  // O meio da tela mais o deslocamento: e onde a imagem foi parar, e e em
-  // torno desse ponto que ela gira e cresce.
-  return { x: r.left + r.width / 2 + t.x * med.w,
-           y: r.top + r.height / 2 + t.y * med.h };
+  // O meio da caixa mais o deslocamento: e onde a imagem foi parar, e e em
+  // torno desse ponto que ela gira e cresce. Numa foto o meio da caixa e o da
+  // tela; num plugin, o do que ele desenhou.
+  const el = layerImg(box, c.id);
+  const q = el ? caixaDaCamada(el, box) : { x: 0, y: 0, w: med.w, h: med.h };
+  return { x: r.left + q.x + q.w / 2 + t.x * med.w,
+           y: r.top + q.y + q.h / 2 + t.y * med.h };
 }
 
 // Em que objeto um gesto da tela vai escrever, resolvido no PRIMEIRO PIXEL.
@@ -531,7 +590,7 @@ export function beginImageDrag(e?, box?) {
   // O texto tem o arrasto dele; o que chega aqui e o que caiu no vazio.
   if (e.target.closest(".tx")) return;
 
-  const c = tfDragTarget();
+  const c = tfDragTarget(e, box);
   if (!c) return;
   e.preventDefault();
 
@@ -544,7 +603,7 @@ export function beginImageDrag(e?, box?) {
     state.pickedPoint = 0;
     // O reprodutor NAO entra na lista: refaze-lo agora trocaria a imagem que
     // esta debaixo da mao, e o arrasto morreria no primeiro pixel.
-    refresh(["timeline", "props", "imagem"]);
+    refresh(["timeline", "props", "imagem", "plugins"]);
     pintaMoldura();
   }
 
@@ -595,7 +654,7 @@ export function wheelZoom(e?, box?) {
   const tx = typeof wheelTextTarget === "function" ? wheelTextTarget() : null;
   if (tx) { wheelTextSize(e, tx); return; }
 
-  const c = tfDragTarget();
+  const c = tfDragTarget(e, box);
   if (!c) return;
   e.preventDefault();
 
@@ -628,7 +687,7 @@ export function paintTfWarning() {
   const aviso = wrap.querySelector(".tf-aviso");
   if (!aviso) return;
   const id = Number(wrap.dataset.clip);
-  aviso.hidden = videoLayers().some((x) => x.id === id);
+  aviso.hidden = camadasNaTela().some((x) => x.id === id);
 }
 
 // ------------------------------------------------- a animacao andando
@@ -642,7 +701,7 @@ export function animaCamadas() {
   if (!box) return;
 
   let animou = false;
-  videoLayers().forEach((c) => {
+  camadasNaTela().forEach((c) => {
     if (!hasAnim(c)) return;
     animou = true;
     applyTransform(layerImg(box, c.id), c, box);
@@ -819,7 +878,8 @@ export function renderImagem(body?) {
         '" step="1" value="' + Math.round(t.esc * 100) + '">' +
         '<span class="unit">%</span></div>' +
     '</div>' +
-    speedRowHtml(c) +
+    // Velocidade e do material; um plugin nao tem arquivo para correr.
+    (c.media ? speedRowHtml(c) : '') +
     '<div class="tx-row">' +
       '<label>Rotacao</label>' +
       '<input type="range" id="tfRot" min="' + ROT_MIN + '" max="' + ROT_MAX +
@@ -882,6 +942,9 @@ export function renderImagem(body?) {
     spreadTF(c);
     const box = screenIn();
     if (box) applyTransform(layerImg(box, c.id), c, box);
+    // A moldura anda junto: sem isto ela ficava onde a imagem estava antes do
+    // ajuste pelos campos.
+    pintaMoldura();
   };
 
   // Onde os controles ESCREVEM. Num clipe parado e o enquadramento do clipe;
@@ -1026,6 +1089,10 @@ export function renderImagem(body?) {
     // Centralizar zerava os numeros do painel e a imagem ficava onde estava.
     paintPreview();
     requestPreview();
+    // Plugins nao passam por paintPreview: a camada e a moldura deles vao aqui.
+    const box = screenIn();
+    if (box) applyTransform(layerImg(box, c.id), c, box);
+    pintaMoldura();
     refresh(["timeline", "imagem", "props"]);
   };
 

@@ -23,7 +23,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            jatai_video/package-lock.json
+            jatai_lang/ide/package-lock.json
       - run: npm ci
+      # O editor de video e a plataforma da linguagem sao projetos a parte, com
+      # dependencias proprias. Os dois compilam o jatai.wasm de jatai_lang/.
+      - run: npm ci --prefix jatai_video
+      - run: npm ci --prefix jatai_lang/ide
+      # Hub + jatai_image, e os builds de jatai_video e jatai_lang/ide em dist/.
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

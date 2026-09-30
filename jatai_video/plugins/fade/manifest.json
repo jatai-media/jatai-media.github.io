@@ -1,0 +1,13 @@
+{
+  "nome": "Fade",
+  "tipo": "filtro",
+  "descricao": "Escurece (ou clareia) na entrada e na saida do clipe. Ponha sobre um corte para uma transicao.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 2,
+  "params": [
+    { "id": "entrada", "tipo": "numero",  "rotulo": "Entrada", "min": 0, "max": 10, "passo": 0.1, "padrao": 1, "unidade": "s" },
+    { "id": "saida",   "tipo": "numero",  "rotulo": "Saida",   "min": 0, "max": 10, "passo": 0.1, "padrao": 1, "unidade": "s" },
+    { "id": "cor",     "tipo": "cor",     "rotulo": "Cor",     "padrao": "#000000" }
+  ]
+}

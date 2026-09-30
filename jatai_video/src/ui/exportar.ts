@@ -18,6 +18,9 @@ import { projetoAberto, projetoDuracao } from "./projeto";
 import { audioSegments } from "./panel-player";
 import { clipTF, animPts } from "./panel-imagem";
 import { fundoSolidez, fundoEncolher } from "./panel-efeitos";
+import { isPlugin, pluginParaExportar, pluginsFaltando } from "../plugins/plugins";
+import { isText } from "./texto";
+import { carregaFonte } from "./fontes";
 
 export const EXPORT_TAMANHOS = [
   { id: "projeto", nome: "Como esta o projeto" },
@@ -43,8 +46,16 @@ export function exportAtual() {
 // As camadas visuais, de baixo para cima - a mesma ordem em que a tela as
 // empilha. O exportador desenha nesta ordem, entao o que cobre na previa
 // cobre no arquivo.
-export function exportCamadas() {
-  const pistas = state.tracks.filter((t) => t.kind === "video");
+//
+// Plugins e textos entram na mesma lista, no lugar deles na pilha, com a
+// midia NEGATIVA: -1 e o primeiro de `plugins`, -2 o segundo... O que eles
+// precisam (id e parametros de um plugin, o texto e a letra de um texto) nao
+// cabe em numeros, e vai em `plugins`, que segue no fim dos argumentos.
+//
+// As pistas de texto entram na pilha como as de video: um texto numa pista
+// abaixo da do video fica atras dele, como na previa.
+export function exportCamadas(plugins = []) {
+  const pistas = state.tracks.filter((t) => t.kind !== "audio");
   const ordem = new Map();
   // A pista do FIM da lista e a de baixo na tela; a ordem de desenho e a
   // inversa da ordem da lista.
@@ -52,9 +63,29 @@ export function exportCamadas() {
 
   const saida = [];
   state.clips
-    .filter((c) => !c.off && c.media > 0 && c.kind !== "audio" && ordem.has(c.track))
+    .filter((c) => !c.off && (c.media > 0 || isPlugin(c) || isText(c)) && c.kind !== "audio" &&
+                   ordem.has(c.track))
     .sort((a, b) => ordem.get(a.track) - ordem.get(b.track))
     .forEach((c) => {
+      if (isText(c)) {
+        plugins.push({ tipo: "texto", texto: Object.assign({}, c.texto) });
+        saida.push([-plugins.length, c.start, c.len, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]);
+        return;
+      }
+      if (isPlugin(c)) {
+        const d = pluginParaExportar(c);
+        if (!d) return;          // plugin que nao carregou: o aviso ja foi dado
+        plugins.push(d);
+        // O enquadramento vai como o de uma foto: parado e pontos de animacao,
+        // no tempo do clipe (plugin nao tem pedacos).
+        const tf = clipTF(c);
+        const pts = animPts(c) || [];
+        const camada = [-plugins.length, c.start, c.len, 0, 1,
+                        tf.esc, tf.x, tf.y, tf.rot || 0, 0, 0, 0, pts.length];
+        pts.forEach((k) => camada.push(k.t, k.esc, k.x, k.y, k.rot || 0, k.s ? 1 : 0));
+        saida.push(camada);
+        return;
+      }
       const t = clipTF(c);
       const pts = animPts(c) || [];
       // Um clipe fundido tem pedacos: cada um e um trecho do arquivo, e
@@ -111,7 +142,7 @@ export async function abreExportar() {
   if (exportAtual().rodando) { toast("Ja ha uma exportacao em curso."); return; }
 
   const e = exportAtual();
-  const temTexto = state.clips.some((c) => c.kind === "texto");
+  const faltam = pluginsFaltando();
 
   const fundo = document.createElement("div");
   fundo.className = "dlg-fundo";
@@ -136,10 +167,10 @@ export async function abreExportar() {
           [24, 30, 60].map((f) => '<option value="' + f + '"' +
               (f === e.fps ? " selected" : "") + '>' + f + '</option>').join("") +
         '</select></div>' +
-      (temTexto
-        ? '<div class="dlg-aviso">Os textos da linha do tempo ainda NAO ' +
-          'entram no arquivo exportado. Imagem, enquadramento e som saem ' +
-          'completos.</div>'
+      (faltam.length
+        ? '<div class="dlg-aviso">Estes plugins nao estao carregados e vao ficar ' +
+          'de fora: ' + escapeHtml(faltam.join(", ")) + '. Abra a pasta de ' +
+          'plugins antes de exportar (Menu &gt; Plugins).</div>'
         : "") +
       '<div class="dlg-botoes">' +
         '<button class="btn primary" id="exIr">Escolher destino e exportar</button>' +
@@ -180,8 +211,13 @@ export async function fazExportar() {
     return;
   }
 
-  const camadas = exportCamadas();
+  const plugins = [];
+  const camadas = exportCamadas(plugins);
   const sons = exportSons();
+  // O canvas da exportacao nao espera fonte nenhuma: se ela ainda nao chegou,
+  // ele desenha com a reserva. Entao elas vem antes - so as que os textos usam.
+  await Promise.all(plugins.filter((d) => d.tipo === "texto")
+      .map((d) => carregaFonte(d.texto.fonte, d.texto.peso, d.texto.txt)));
 
   e.rodando = true;
   e.feito = 0;
@@ -194,6 +230,7 @@ export async function fazExportar() {
                 camadas.length, sons.length];
   camadas.forEach((c) => args.push.apply(args, c));
   sons.forEach((s) => args.push.apply(args, s));
+  args.push({ plugins });
 
   const r = await api.exportar.apply(null, args);
   e.rodando = false;
@@ -209,7 +246,8 @@ export async function fazExportar() {
         // Era "\\n" no jat.ai em C++, e a caixa mostrava a barra e o n ao pe
         // da letra. Agora e quebra de verdade, e .dlg-texto a respeita.
         "O arquivo esta em:\n" + r.arquivo +
-        (r.motor ? "\n\nCodificado pela " + r.motor + "." : ""),
+        (r.motor ? "\n\nCodificado pela " + r.motor + "." : "") +
+        (r.tempo ? "\n\nTempo: " + r.tempo : ""),
         [{ id: "ok", texto: "Fechar", tipo: "primary", escape: true }]);
   } else if (r && r.cancelado) {
     toast("Exportacao cancelada.");

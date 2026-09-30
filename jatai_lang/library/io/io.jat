@@ -1,0 +1,22 @@
+#biblioteca io: entrada do teclado (ou de um pipe) e saida de erro
+#uso: import io
+#arquivos ficam na biblioteca file
+
+#mostra a pergunta e le a resposta (sem a quebra de linha), como o input() do Python
+extern string input(string pergunta)
+
+#le uma linha; no fim da entrada devolve ""
+extern string read_line()
+
+#true quando nao ha mais nada para ler
+extern bool eof()
+
+#le toda a entrada de uma vez (ex.: jatai programa.jat < dados.txt)
+extern string read_all()
+
+#escreve na saida de erro (stderr)
+extern void eprint(string s)
+extern void eprintln(string s)
+
+#faz a saida pendente aparecer agora
+extern void flush()

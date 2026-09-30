@@ -1,0 +1,63 @@
+import text
+
+#maiusculas, minusculas e nomes (com acentos)
+
+println(text.upper("ação, café e pão"))
+println(text.lower("JOÃO E MARIA"))
+println(text.name("  jOÃO   da  SILVA-souza "))
+println(text.name("maria das dores e silva"))
+
+#lendo cabecalhos HTTP
+
+string requisicao = """
+    GET /index.html HTTP/1.1
+    Host: jatai.dev
+    Content-Type: text/html; charset=utf-8
+    Content-Length:  1024
+    X-Usuario:   ana paula
+    """
+
+string[] linhas = text.lines(requisicao)
+string primeira = linhas[0]
+string[] partes = text.split(primeira, " ")
+string metodo = partes[0]
+string caminho = partes[1]
+println("metodo: {metodo}, caminho: {caminho}")
+
+for i in range(1, len(linhas))
+    string linha = linhas[i]
+    string chave = text.lower(text.trim(text.before(linha, ":")))
+    string valor = text.trim(text.after(linha, ":"))
+    println("[{chave}] = [{valor}]")
+    if chave == "content-length"
+        int tamanho = text.to_int(valor)
+        int dobro = tamanho * 2
+        println("  tamanho como int: {tamanho} (dobro {dobro})")
+    if chave == "x-usuario"
+        string usuario = text.name(valor)
+        println("  usuario: {usuario}")
+
+#busca e transformacao
+
+string frase = "o rato roeu a roupa do rei de roma"
+int quantos = text.count(frase, "ro")
+int onde = text.find(frase, "roupa")
+bool tem = text.contains(frase, "rei")
+println("'ro' aparece {quantos}x, 'roupa' na posicao {onde}, tem rei: {tem}")
+println(text.replace(frase, "r", "R"))
+println(text.join(text.split("a,b,c", ","), " | "))
+println(text.repeat("=-", 10))
+
+#bytes x caracteres
+
+string palavra = "ação"
+int bytes = len(palavra)
+int letras = text.length(palavra)
+println("{palavra}: {bytes} bytes, {letras} caracteres")
+
+#sem escrever os tipos
+
+csv = "ana;32;jatai"
+campos = text.split(csv, ";")
+idade = text.to_int(campos[1])
+println("{text.name(campos[0])} tem {idade} anos e mora em {text.upper(campos[2])}")

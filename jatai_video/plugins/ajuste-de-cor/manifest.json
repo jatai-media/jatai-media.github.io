@@ -1,0 +1,14 @@
+{
+  "nome": "Ajuste de cor",
+  "tipo": "filtro",
+  "descricao": "Brilho, contraste, saturacao e temperatura de tudo o que esta abaixo. Saturacao 0 deixa em preto e branco.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 10,
+  "params": [
+    { "id": "brilho",      "tipo": "numero", "rotulo": "Brilho",      "min": -100, "max": 100, "padrao": 0 },
+    { "id": "contraste",   "tipo": "numero", "rotulo": "Contraste",   "min": -100, "max": 100, "padrao": 0 },
+    { "id": "saturacao",   "tipo": "numero", "rotulo": "Saturacao",   "min": 0,    "max": 200, "padrao": 100, "unidade": "%" },
+    { "id": "temperatura", "tipo": "numero", "rotulo": "Temperatura", "min": -100, "max": 100, "padrao": 0 }
+  ]
+}

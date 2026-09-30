@@ -1,0 +1,13 @@
+{
+  "nome": "Vinheta",
+  "tipo": "filtro",
+  "descricao": "Escurece as bordas da imagem, puxando o olhar para o centro.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 10,
+  "params": [
+    { "id": "forca", "tipo": "numero", "rotulo": "Forca", "min": 0,  "max": 100, "padrao": 60, "unidade": "%" },
+    { "id": "raio",  "tipo": "numero", "rotulo": "Raio",  "min": 20, "max": 150, "padrao": 75, "unidade": "%" },
+    { "id": "cor",   "tipo": "cor",    "rotulo": "Cor",   "padrao": "#000000" }
+  ]
+}

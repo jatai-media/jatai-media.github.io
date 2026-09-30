@@ -1,0 +1,10 @@
+import editor
+import time
+
+#zoom na foto do gato: de 1x a 2x em 3 segundos
+#(rode no editor de scripts: Menu > Script; a foto precisa estar na linha do tempo com o id gato)
+#rodar de novo substitui os pontos que ele criou da outra vez
+
+editor.zoom("gato", 1.0)
+time.sleep(3.0)
+editor.zoom("gato", 2.0)

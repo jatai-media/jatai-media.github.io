@@ -17,6 +17,7 @@ import { renderTexto } from "./texto";
 import { renderNarrador } from "./panel-narrador";
 import { renderEfeitos } from "./panel-efeitos";
 import { renderTimeline } from "./panel-timeline";
+import { renderPlugins } from "./panel-plugins";
 
 export const PANELS = {
   media:    { title: "Midia",          render: renderMedia },
@@ -25,9 +26,12 @@ export const PANELS = {
   texto:    { title: "Texto",          render: renderTexto },
   narrador: { title: "Narrador",       render: renderNarrador },
   efeitos:  { title: "Efeitos",        render: renderEfeitos },
+  plugins:  { title: "Plugins",        render: renderPlugins },
   props:    { title: "Propriedades",   render: renderProps },
   player:   { title: "Reprodutor",     render: renderPlayer },
   timeline: { title: "Linha do tempo", render: renderTimeline },
+  // Os scripts Jatai nao sao um painel: tem guia propria (Menu > Script, ver
+  // src/jatai/ponte.ts), com espaco para escrever.
 };
 
 // Layout inicial: a cesta de midia a esquerda, o reprodutor no meio, os
@@ -42,7 +46,7 @@ export function defaultLayout() {
         kids: [
           { t: "tabs", ids: ["media"], active: "media" },
           { t: "tabs", ids: ["player"], active: "player" },
-          { t: "tabs", ids: ["imagem", "audio", "texto", "efeitos", "props"],
+          { t: "tabs", ids: ["imagem", "audio", "texto", "efeitos", "plugins", "props"],
             active: "imagem" },
         ] },
       { t: "tabs", ids: ["timeline"], active: "timeline" },

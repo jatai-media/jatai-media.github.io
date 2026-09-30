@@ -1,0 +1,40 @@
+#crivo de Eratostenes: todos os primos de 0 ate 1 milhao
+
+const int LIMITE = 1000000
+
+#todos comecam como primos, menos 0 e 1
+
+bool[] primo = [true] * (LIMITE + 1)
+primo[0] = false
+primo[1] = false
+
+#cada primo i risca seus multiplos a partir de i * i
+
+int i = 2
+while i * i <= LIMITE
+    if primo[i]
+        int j = i * i
+        while j <= LIMITE
+            primo[j] = false
+            j = j + i
+    i = i + 1
+
+#contagem e o maior primo encontrado
+
+int total = 0
+int maior = 0
+for n in range(LIMITE + 1)
+    if primo[n]
+        total = total + 1
+        maior = n
+
+println("primos ate {LIMITE}: {total}")
+println("maior primo: {maior}")
+
+#sem escrever os tipos (mesma velocidade: o tipo e deduzido na compilacao)
+
+gemeos = 0
+for p in range(3, LIMITE - 1)
+    if primo[p] and primo[p + 2]
+        gemeos = gemeos + 1
+println("pares de primos gemeos: {gemeos}")

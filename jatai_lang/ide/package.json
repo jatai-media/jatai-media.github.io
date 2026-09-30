@@ -1,0 +1,26 @@
+{
+  "name": "jatai-ide",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "wasm": "node scripts/build-wasm.mjs",
+    "dev": "npm run wasm && vite",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run wasm && tsc --noEmit && vite build",
+    "build:hub": "npm run wasm && tsc --noEmit && vite build --base /jatai_lang/ --outDir ../../dist/jatai_lang --emptyOutDir",
+    "server:build": "g++ -std=c++20 -O2 -static server.cpp -o server.exe -lws2_32",
+    "server": ".\\server.exe 8091 dist",
+    "live": "npm run wasm && vite build && concurrently -k -n build,server -c yellow,cyan \"vite build --watch\" \"npm:server\""
+  },
+  "dependencies": {
+    "monaco-editor": "^0.57.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@yowasp/clang": "^22.0.0-git20542-10",
+    "concurrently": "^10.0.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}

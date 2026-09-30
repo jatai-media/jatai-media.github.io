@@ -1,0 +1,32 @@
+{
+  "nome": "Máscara de Coração",
+  "descricao": "Tela colorida com um coração vazado no centro, revelando o vídeo por baixo.",
+  "versao": "1.0",
+  "autor": "Jataí",
+  "duracao": 5,
+  "parado": false,
+  "params": [
+    {
+      "id": "cor",
+      "tipo": "cor",
+      "rotulo": "Cor da máscara",
+      "padrao": "#e60026"
+    },
+    {
+      "id": "tamanho",
+      "tipo": "numero",
+      "rotulo": "Tamanho do coração",
+      "min": 10,
+      "max": 90,
+      "passo": 1,
+      "padrao": 45,
+      "unidade": "% da tela"
+    },
+    {
+      "id": "borda",
+      "tipo": "sim_nao",
+      "rotulo": "Borda do coração",
+      "padrao": true
+    }
+  ]
+}

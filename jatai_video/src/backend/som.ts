@@ -64,6 +64,13 @@ class Motor {
 
   erro = '';
 
+  // Abrir o dispositivo de som (new AudioContext) trava a pagina por algumas
+  // centenas de milissegundos no Windows. Feito no primeiro play, era uma
+  // travada bem no comeco do video. `aquece` o abre antes, num momento ocioso:
+  // sem gesto do usuario o contexto nasce suspenso, e o play so o libera
+  // (resume), o que e instantaneo.
+  aquece(): void { this.garanteCtx(); }
+
   private garanteCtx(): AudioContext | null {
     if (this.ctx) return this.ctx;
     try {

@@ -10,6 +10,8 @@ import { txKey, setTxKey, paintTextLayer } from "./texto";
 import { fundoSolidez, fundoEncolher } from "./panel-efeitos";
 import { projectEnd, followPlayhead } from "./panel-timeline";
 import { saveCanvas } from "./prefs";
+import { paintPluginLayer, pluginsAt, isFiltro } from "../plugins/plugins";
+import { refazFiltros } from "../plugins/filtros";
 
 export function renderPlayer(body?) {
   body.classList.add("fill-col");
@@ -28,7 +30,10 @@ export function renderPlayer(body?) {
   // uma tem o seu jeito de ser redesenhada -, e NAO dois andares: quem decide
   // o que fica na frente e o numero que cada peca leva, tirado da pilha das
   // pistas. Por isso nenhuma das duas pode ganhar z-index proprio.
+  // Os plugins tem a caixa deles (.pl-layer), pelo mesmo motivo: cada canvas
+  // leva o numero da pilha, e a caixa nao empilha nada.
   screen.innerHTML = '<div class="vid-layer"></div>' +
+                     '<div class="pl-layer"></div>' +
                      '<span class="screen-msg"></span>' +
                      '<div class="tx-layer"></div>';
   // Enquadrar e mexer no que se ve: o gesto e na propria imagem.
@@ -72,6 +77,7 @@ export function renderPlayer(body?) {
   fitScreen(body);
   paintPreview(body);
   paintTextLayer(body);
+  paintPluginLayer(body);
   requestPreview(body);
 
   // A medida de verdade so existe depois de o painel entrar na pagina. Quem
@@ -268,6 +274,7 @@ export function fitScreen(raiz?) {
   // A letra e uma fracao da altura da tela: mudou a tela, muda a letra.
   setTxKey("");
   paintTextLayer(raiz);
+  paintPluginLayer(raiz);
   requestPreview();
 }
 
@@ -350,9 +357,23 @@ export function clipUnderPlayhead() {
   return l.length ? l[l.length - 1] : null;
 }
 
-// O <img> de uma camada, dentro da tela.
+// Tudo o que se enquadra na tela sob a agulha - fotos, videos e plugins -, de
+// baixo para cima. `videoLayers` fica so com o que se decodifica: e ela que
+// pede quadros ao backend, e um plugin nao tem arquivo.
+export function camadasNaTela() {
+  const ordem = new Map();
+  state.tracks.forEach((t, i) => ordem.set(t.id, i));
+  const daPilha = (c) => ordem.has(c.track) ? ordem.get(c.track) : 99;
+  // Os filtros nao se enquadram nem se arrastam: sao camadas de ajuste.
+  return videoLayers().concat(pluginsAt(state.pos).filter((c) => !isFiltro(c)))
+                      .sort((a, b) => daPilha(b) - daPilha(a));
+}
+
+// O elemento de uma camada, dentro da tela: o <img> de uma foto ou video, o
+// <canvas> de um plugin.
 export function layerImg(box?, id?) {
-  return box ? box.querySelector('.vid-layer img[data-clip="' + id + '"]') : null;
+  return box ? box.querySelector('.vid-layer img[data-clip="' + id + '"], ' +
+                                 '.pl-layer canvas[data-clip="' + id + '"]') : null;
 }
 
 // Instantes proximos demais pedem o mesmo quadro: arredondar evita mandar
@@ -555,6 +576,8 @@ export function trocaQuadro(im?, url?) {
     // Agora a camada de baixo pode sair. Repintar nao pede quadro nenhum: so
     // refaz a pilha, que e barato.
     paintPreview();
+    // Um filtro por cima deste quadro precisa ver o quadro novo.
+    refazFiltros();
   };
 
   // `decode` avisa quando a imagem esta pronta para ser pintada, que e mais
@@ -631,6 +654,8 @@ export function paintPreview(raiz?) {
   if (pintou || !lista.length) tinha.forEach((im) => im.remove());
 
   if (pintou || lista.length) { msg.textContent = pintou ? "" : (erro || ""); return; }
+  // So plugin na tela (uma vinheta sobre fundo preto): nao ha recado a dar.
+  if (pluginsAt(state.pos).length) { msg.textContent = ""; return; }
   if (erro) msg.textContent = erro;
   else if (!state.clips.length) msg.textContent = "Nada na linha do tempo ainda.";
   else msg.textContent = "Sem clipe de video sob o cursor.";
@@ -651,6 +676,7 @@ export function seek(sec?) {
   $("topTime").textContent = fmtTime(state.pos, true);
   followPlayhead();
   paintTextLayer();
+  paintPluginLayer();
   paintTfWarning();
   // O enquadramento animado muda a cada instante, e a agulha e quem anda: sem
   // isto o movimento so apareceria quando um quadro novo chegasse, aos
@@ -665,6 +691,8 @@ export function seek(sec?) {
 export function seekCommit(sec?) {
   if (sec != null) seek(sec);
   if (!state.playing) return;
+  // Mudar de lugar de proposito pode voltar: o piso do relogio vai junto.
+  state.clockMin = state.pos;
   if (state.audioClock) startAudio(state.pos);
   else { state.clockPos = state.pos; state.clockAt = performance.now(); }
 }
@@ -710,8 +738,26 @@ export async function startAudio(from?) {
   const flat = [];
   audioSegments().forEach((s) => flat.push(...s));
 
+  // O relogio da pagina parte de `from` - e so volta a andar quando o som
+  // comecar de fato (fim desta funcao). Marcar o relogio aqui, antes de
+  // preparar o som, fazia a imagem saltar para a frente o tempo do preparo e,
+  // na primeira pergunta ao motor (que ainda estava em `from`), voltar: a
+  // reproducao comecava indo e voltando - com zoom animado, uma "sambada".
   state.clockPos = from;
   state.clockAt = performance.now();
+  state.clockMin = from;
+  // Enquanto o som reinicia, o motor ainda responde a posicao antiga: quem
+  // perguntar agora (pollTransport) descarta a resposta.
+  const gen = ++state.clockGen;
+  state.clockBusy = true;
+  state.clockWait = true; // a imagem espera em `from` ate o som sair de novo
+  const marca = (tocando = false) => {
+    if (gen !== state.clockGen) return; // outro reinicio passou na frente
+    state.clockPos = from;
+    state.clockAt = performance.now();
+    state.clockBusy = false;
+    state.clockWait = tocando;
+  };
 
   const r = await api.play(from, ...flat);
   if (!r || !r.ok) {
@@ -719,6 +765,7 @@ export async function startAudio(from?) {
       state.audioWarned = true;
       toast(((r && r.error) || "sem saida de audio") + " - o cursor corre sem som.");
     }
+    marca();
     return false;
   }
 
@@ -735,8 +782,10 @@ export async function startAudio(from?) {
       state.audioWarned = true;
       toast(((go && go.error) || "sem saida de audio") + " - o cursor corre sem som.");
     }
+    marca();
     return false;
   }
+  marca(true);
   return true;
 }
 
@@ -770,9 +819,21 @@ export function paintPlayButton() {
 // colados no que se ouve.
 export async function pollTransport() {
   while (state.playing && state.audioClock) {
+    const gen = state.clockGen;
     const r = await api.transport();
     if (!state.playing) break;
-    if (r && typeof r.pos === "number") {
+    // Resposta de antes de um reinicio (pulo com o som tocando) fala da posicao
+    // antiga: segui-la levaria a imagem de volta para la.
+    const velha = gen !== state.clockGen || state.clockBusy;
+    // Esperando o som sair: enquanto a placa ainda esta no ponto de partida, a
+    // imagem tambem fica. Se ela nunca andar (placa travada), desiste em 1,5 s.
+    const parado = r && typeof r.pos === "number" && r.pos <= state.clockPos + 1e-4;
+    if (state.clockWait && !velha && parado && performance.now() - state.clockAt < 1500) {
+      await new Promise((done) => setTimeout(done, 15));
+      continue;
+    }
+    if (r && typeof r.pos === "number" && !velha) {
+      state.clockWait = false;
       state.clockPos = r.pos;
       state.clockAt = performance.now();
       paintMeter(r.peak || 0);
@@ -803,7 +864,15 @@ export function paintMeter(peak?) {
 
 export function tick() {
   if (!state.playing) return;
-  const at = state.clockPos + (performance.now() - state.clockAt) / 1000;
+  // O som manda no tempo, mas a imagem nunca anda para tras durante a
+  // reproducao: no arranque o motor ainda informa o ponto de partida por um
+  // instante (o atraso de arranque mais a latencia da placa), e seguir isso ao
+  // pe da letra fazia a imagem ir e voltar a cada pergunta, dez vezes por
+  // segundo. Com o piso, ela espera o som alcanca-la e segue junto.
+  let at = state.clockWait ? state.clockPos
+                            : state.clockPos + (performance.now() - state.clockAt) / 1000;
+  if (at < state.clockMin) at = state.clockMin;
+  state.clockMin = at;
   const end = projectEnd();
   if (end && at >= end) { seek(end); stopPlay(); return; }
   seek(at);

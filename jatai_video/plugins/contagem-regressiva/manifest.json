@@ -1,0 +1,12 @@
+{
+  "nome": "Contagem regressiva",
+  "descricao": "Numeros grandes contando ate zero, com um anel que esvazia a cada segundo.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 5,
+  "params": [
+    { "id": "de",    "tipo": "numero", "rotulo": "Comeca em", "min": 1, "max": 60, "padrao": 5 },
+    { "id": "cor",   "tipo": "cor",    "rotulo": "Cor",       "padrao": "#f0b429" },
+    { "id": "fundo", "tipo": "sim_nao", "rotulo": "Escurecer o fundo", "padrao": true }
+  ]
+}

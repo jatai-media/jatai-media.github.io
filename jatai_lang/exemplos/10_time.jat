@@ -1,0 +1,46 @@
+import time
+
+#crivo de Eratostenes como funcao, para medir
+
+int contar_primos(int limite)
+    bool[] primo = [true] * (limite + 1)
+    primo[0] = false
+    primo[1] = false
+    int i = 2
+    while i * i <= limite
+        if primo[i]
+            int j = i * i
+            while j <= limite
+                primo[j] = false
+                j = j + i
+        i = i + 1
+    int total = 0
+    for n in range(limite + 1)
+        if primo[n]
+            total = total + 1
+    return total
+
+#medindo com time.now() e time.elapsed_ms()
+
+double inicio = time.now()
+int primos = contar_primos(1000000)
+double ms = time.elapsed_ms(inicio)
+println("primos ate 1 milhao: {primos}")
+println("sieve levou {ms} ms")
+
+#pausa com time.sleep()
+
+println("esperando 0.1 segundo...")
+double antes = time.now()
+time.sleep(0.1)
+double dormiu = time.elapsed(antes)
+println("dormiu {dormiu} s")
+
+#sem escrever os tipos
+
+comeco = time.now()
+soma = 0
+for k in range(1000000)
+    soma = soma + k % 7
+gasto = time.elapsed_ms(comeco)
+println("laco de 1 milhao: soma {soma} em {gasto} ms")

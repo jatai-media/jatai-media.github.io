@@ -38,6 +38,7 @@ static std::string mime_type(const fs::path& file) {
         {".css", "text/css; charset=utf-8"},
         {".js", "text/javascript; charset=utf-8"},
         {".json", "application/json"},
+        {".wasm", "application/wasm"},  // o jatai.wasm do editor de video
         {".png", "image/png"},
         {".jpg", "image/jpeg"},
         {".jpeg", "image/jpeg"},

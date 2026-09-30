@@ -34,7 +34,13 @@ interface DataTransferItem {
   getAsFileSystemHandle?(): Promise<FileSystemHandle | null>;
 }
 
+interface DirectoryPickerOptions {
+  id?: string;
+  mode?: 'read' | 'readwrite';
+}
+
 interface Window {
+  showDirectoryPicker?(o?: DirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
   showOpenFilePicker?(o?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
   showSaveFilePicker?(o?: SaveFilePickerOptions): Promise<FileSystemFileHandle>;
 }

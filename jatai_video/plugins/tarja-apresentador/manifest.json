@@ -1,0 +1,19 @@
+{
+  "nome": "Tarja do apresentador",
+  "descricao": "Nome e cargo numa faixa com degrade, como nos telejornais. Entra deslizando e sai no fim do clipe.",
+  "versao": "1.0",
+  "autor": "jat.ai",
+  "duracao": 5,
+  "params": [
+    { "id": "nome",      "tipo": "texto",  "rotulo": "Nome",      "padrao": "Maria Silva" },
+    { "id": "cargo",     "tipo": "texto",  "rotulo": "Cargo",     "padrao": "Reporter" },
+    { "id": "cor1",      "tipo": "cor",    "rotulo": "Degrade de", "padrao": "#b3122e" },
+    { "id": "cor2",      "tipo": "cor",    "rotulo": "ate",       "padrao": "#5a0916" },
+    { "id": "destaque",  "tipo": "cor",    "rotulo": "Destaque",  "padrao": "#f0b429" },
+    { "id": "corTexto",  "tipo": "cor",    "rotulo": "Letra",     "padrao": "#ffffff" },
+    { "id": "largura",   "tipo": "numero", "rotulo": "Largura",   "min": 20, "max": 95, "padrao": 48, "unidade": "%" },
+    { "id": "altura",    "tipo": "numero", "rotulo": "Altura na tela", "min": 10, "max": 95, "padrao": 82, "unidade": "%" },
+    { "id": "lado",      "tipo": "escolha", "rotulo": "Lado",     "opcoes": ["esquerda", "direita"], "padrao": "esquerda" },
+    { "id": "sombra",    "tipo": "sim_nao", "rotulo": "Sombra",   "padrao": true }
+  ]
+}

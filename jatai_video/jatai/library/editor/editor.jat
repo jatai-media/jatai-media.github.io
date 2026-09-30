@@ -1,0 +1,103 @@
+#biblioteca editor: a linha do tempo do jat.ai vista por um script Jatai
+#(so existe na pagina: as funcoes sao implementadas em src/jatai/editor-lib.ts)
+#uso: import editor
+#     import time
+#
+#O script nao coloca nem tira nada da linha do tempo: quem monta e voce. Ele so
+#anima o que ja esta la, chamando cada elemento por um id:
+#  botao direito no CLIPE, na linha do tempo > Atribuir id para scripts
+#  (foto, video, musica ou texto). O id e do clipe, e nao do arquivo: a mesma
+#  foto colocada duas vezes pode ter dois ids ("gato", "gato2") e duas animacoes.
+#
+#   for i in range(60)
+#       editor.rotate_by("gato", 1)    #gira mais 1 grau...
+#       time.sleep(0.1)                #...a cada decimo de segundo do video
+#
+#"Agora" e o relogio do script (time.now()), que comeca no inicio do video. Cada
+#mudanca de zoom, posicao, giro ou volume vira um ponto de animacao naquele
+#instante, e o editor caminha de um ponto ao outro. Se o mesmo arquivo esta varias
+#vezes na linha do tempo, vale o clipe que esta no instante atual. Um Ctrl+Z desfaz
+#o script inteiro.
+#
+#Os numeros sao os mesmos do painel Imagem, e inteiros como la: zoom em %,
+#posicao em % a partir do centro da tela e giro em graus. O que o painel mostra
+#como "Zoom 50, Posicao -30 % X, 0 % Y, Rotacao -180" e, no script:
+#   editor.zoom("gato", 50)
+#   editor.move("gato", -30, 0)
+#   editor.rotate("gato", -180)
+
+#o id esta na linha do tempo?
+extern bool exists(string id)
+#inicio e duracao do clipe (o do instante atual, se houver varios)
+extern double start_of(string id)
+extern double length_of(string id)
+
+#--- movimento de fotos e videos (vale no instante atual) ---
+
+#tamanho em %: 100 = como veio, 200 = o dobro, 50 = a metade
+extern void zoom(string id, int pct)
+#multiplica o tamanho: 1.1 = 10% maior
+extern void zoom_by(string id, double fator)
+#posicao do centro do elemento em %, a partir do centro da tela: 0, 0 = no
+#meio; -50 = borda esquerda (ou de cima), 50 = borda direita (ou de baixo)
+extern void move(string id, int x, int y)
+#anda a partir de onde esta, em % da tela (10 = um decimo da tela)
+extern void move_by(string id, int dx, int dy)
+#giro em graus (positivo: sentido horario)
+extern void rotate(string id, int graus)
+#gira mais alguns graus
+extern void rotate_by(string id, int graus)
+
+#como estao no instante atual, nas medidas acima (as mesmas do painel)
+extern int scale(string id)
+extern int pos_x(string id)
+extern int pos_y(string id)
+extern int rotation(string id)
+
+#o movimento entre dois pontos: false = constante (o normal), true = comeca e
+#termina devagar. Vale para os pontos criados depois.
+extern void ease(bool suave)
+
+#--- som (videos com audio e musicas; vale no instante atual) ---
+
+#volume em dB: 0 = como veio, -6 = metade, -60 = mudo, ate +12
+extern void volume(string id, double db)
+extern void volume_by(string id, double db)
+extern double volume_now(string id)
+
+#--- texto (vale para o texto inteiro, nao anima) ---
+
+#cor da letra, como no CSS: "#ffcc00"
+extern void color(string id, string cor)
+#fonte, pelo nome do painel Texto: "Inter", "Montserrat", "Bebas Neue", "Playfair Display"...
+#(as fontes vem com o programa: o texto sai igual em Windows, Linux e Mac)
+extern void font(string id, string fonte)
+#altura da letra, em % da altura da tela, como no painel Texto (5 = legenda, 11 = titulo)
+extern void size(string id, int pct)
+
+#--- a linha do tempo ---
+
+#fim do ultimo clipe, em segundos
+extern double duration()
+#onde esta a agulha
+extern double cursor()
+extern void seek(double segundos)
+
+#clipes na ordem em que comecam: indices de 0 a clips() - 1
+extern int clips()
+extern string clip_name(int i)
+#"video", "audio", "imagem", "texto"
+extern string clip_kind(int i)
+extern double clip_start(int i)
+extern double clip_length(int i)
+#id do clipe ("" se nao tem)
+extern string clip_id(int i)
+
+#arquivos da cesta de Midia: indices de 0 a medias() - 1
+extern int medias()
+extern string media_name(int i)
+#"video", "audio" ou "imagem"
+extern string media_kind(int i)
+
+#aviso rapido no rodape da janela
+extern void toast(string mensagem)

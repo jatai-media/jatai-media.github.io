@@ -26,6 +26,11 @@ const es: Messages = {
         description: 'Monta videos con cortes, capas, texto y pistas de sonido, y exporta en MP4.',
         open: 'Abrir editor',
       },
+      lang: {
+        name: 'Lenguaje Jatai',
+        description: 'Escribe y ejecuta programas en Jatai en el navegador, o descarga el lenguaje para tu computadora.',
+        open: 'Abrir editor',
+      },
     },
   },
   editor: {

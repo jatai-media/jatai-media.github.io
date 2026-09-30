@@ -1,0 +1,54 @@
+import voz
+import file
+
+#fala pelo Windows (SAPI via COM): vozes instaladas, callback por palavra, fala
+#assincrona e gravacao em WAV
+
+global string[] palavras = []
+
+void palavra(string p)
+    palavras.append(p)
+    print("{p} ")
+
+int total = voz.voices()
+println("vozes instaladas: {total}")
+for i in range(total)
+    println("  {i}: {voz.voice_name(i)}")
+
+#prefere uma voz em portugues, se houver
+bool pt = voz.set_voice("Portuguese") or voz.set_voice("Maria") or voz.set_voice("Daniel")
+if pt
+    println("usando: {voz.voice()}")
+else
+    println("sem voz em portugues, usando: {voz.voice()}")
+
+voz.volume(80)
+
+#callback chamado pelo motor de voz a cada palavra
+println("")
+voz.say_words("Olá! Eu sou o Jatai, falando pelo Windows.", palavra)
+println("")
+println("palavras faladas: {len(palavras)}")
+
+#fala sem bloquear, enquanto o programa segue
+voz.rate(3)
+voz.say_async("Esta frase é assíncrona.")
+int voltas = 0
+while voz.speaking()
+    voltas = voltas + 1
+    voz.wait()
+println("a fala assincrona terminou")
+
+#grava em arquivo em vez de tocar
+voz.rate(0)
+string wav = "voz_teste.wav"
+if voz.save_wav("Gravado em arquivo.", wav)
+    println("gravado {wav}: {file.size(wav)} bytes")
+    file.remove(wav)
+
+#callback sem tipo: fn recebe o tipo da assinatura que voz.say_words espera (void(string))
+global contagem = 0
+fn contar_palavra(p)
+    contagem = contagem + 1
+voz.say_words("contando palavras sem escrever tipos", contar_palavra)
+println("palavras contadas: {contagem}")

@@ -1,0 +1,52 @@
+#strings multilinha com aspas triplas: texto cru, ideal para HTML, CSS e JS
+#  - chave simples { } e texto normal (CSS e JS colam sem escapar nada)
+#  - {{nome}} interpola uma variavel
+#  - o recuo do """ final e removido de todas as linhas
+
+string pagina(string titulo, string usuario, int visitas)
+    string html = """
+        <!DOCTYPE html>
+        <html lang="pt-br">
+        <head>
+          <meta charset="utf-8">
+          <title>{{titulo}}</title>
+          <style>
+            body { font-family: sans-serif; background: #111; color: #eee; }
+            h1 { color: #f5b800; }
+          </style>
+        </head>
+        <body>
+          <h1>Ola, {{ usuario }}!</h1>
+          <p>Voce ja visitou esta pagina {{visitas}} vezes.</p>
+          <script>
+            function saudar(nome) { console.log(`oi ${nome}\n`); }
+            saudar("{{usuario}}");
+          </script>
+        </body>
+        </html>
+        """
+    return html
+
+println(pagina("Jatai", "Ana", 42))
+
+#texto simples em varias linhas
+
+string poema = """
+    Batatinha quando nasce
+      se esparrama pelo chao
+    """
+println(poema)
+
+#tudo na mesma linha tambem funciona
+
+println("""aspas "dentro" sem escapar e barra \ crua""")
+
+#sem escrever os tipos
+
+produto = "Cafe"
+valor = 12.5
+cartao = """
+    Produto: {{produto}}
+    Preco: R$ {{valor}}
+    """
+println(cartao)
